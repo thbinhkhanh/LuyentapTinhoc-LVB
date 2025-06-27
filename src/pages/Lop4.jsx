@@ -7,9 +7,8 @@ import {
   Card,
 } from '@mui/material';
 import {
-  Monitor, Keyboard, Newspaper, Search, Folder, ShieldCheck,
-  Image, Type, Film, FileText, Edit, Video, Gamepad,
-  Code, Lightbulb, UserCheck, ClipboardList,
+  Monitor, Keyboard, Newspaper, Folder, ShieldCheck, ClipboardList,
+  Search, Image, Type, Film, FileText, Edit, Video, Gamepad, Code, Lightbulb, UserCheck
 } from 'lucide-react';
 import Banner from '../pages/Banner';
 
@@ -102,19 +101,23 @@ const LessonCard = ({ title, icon, color, onSelect }) => {
   );
 };
 
-export default function Lop4() {
+export default function Lop3() {
   const navigate = useNavigate();
   const [selectedSemester, setSelectedSemester] = useState(1);
+  const [selectedLesson, setSelectedLesson] = useState(null);
 
-  const handleSelect = (link) => {
-    navigate(`/scorm-viewer?link=${encodeURIComponent(link)}`);
+  const handleSelect = (link, title) => {
+    setSelectedLesson(`Lớp 4 - ${title}`);
+    navigate(
+      `/scorm-viewer?link=${encodeURIComponent(link)}&lop=Lớp 4&bai=${encodeURIComponent(title)}`
+    );
   };
 
   const currentLessons = selectedSemester === 1 ? lessonsHK1 : lessonsHK2;
 
   return (
     <>
-      <Banner title="TIN HỌC - LỚP 4" />
+      <Banner title="TIN HỌC - LỚP 3" />
       <Box
         sx={{
           p: { xs: 2, sm: 4 },
@@ -169,6 +172,28 @@ export default function Lop4() {
           }}
         />
 
+        {selectedLesson && (
+          <Box
+            sx={{
+              mt: 6,
+              mb: 4,
+              px: 3,
+              py: 2,
+              mx: 'auto',
+              maxWidth: 600,
+              backgroundColor: '#fffde7',
+              border: '2px solid #ffeb3b',
+              borderRadius: 3,
+              textAlign: 'center',
+              boxShadow: 3,
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="primary">
+              {selectedLesson}
+            </Typography>
+          </Box>
+        )}
+
         <Box
           sx={{
             display: 'grid',
@@ -180,7 +205,7 @@ export default function Lop4() {
             <LessonCard
               key={index}
               {...item}
-              onSelect={() => handleSelect(item.link)}
+              onSelect={() => handleSelect(item.link, item.title)}
             />
           ))}
         </Box>

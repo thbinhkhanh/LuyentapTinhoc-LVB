@@ -7,9 +7,8 @@ import {
   Card,
 } from '@mui/material';
 import {
-  BookOpen, Globe, Search, FileText, Folder, Lock,
-  Brush, Smile, FileCode2, GitCompare, Repeat,
-  Calculator, PlayCircle, ScrollText, ShieldCheck,
+  BookOpen, Search, FileText, Folder, Lock, Brush, Smile, ShieldCheck,
+  Globe, FileCode2, GitCompare, Repeat, Calculator, PlayCircle, ScrollText
 } from 'lucide-react';
 import Banner from '../pages/Banner';
 
@@ -39,7 +38,6 @@ const lessonsHK2 = [
   { title: 'Ôn tập học kì II', icon: <ShieldCheck size={32} color="#1976d2" />, color: 'error', link: '/scorm/OntapHKIIL5/res/index.html' },
 ];
 
-// Component thẻ bài học
 const LessonCard = ({ title, icon, color, onSelect }) => {
   const bgColors = {
     primary: '#E3F2FD',
@@ -104,13 +102,16 @@ const LessonCard = ({ title, icon, color, onSelect }) => {
   );
 };
 
-// Component chính
-export default function Lop3() {
+export default function Lop5() {
   const navigate = useNavigate();
   const [selectedSemester, setSelectedSemester] = useState(1);
+  const [selectedLesson, setSelectedLesson] = useState(null);
 
-  const handleSelect = (link) => {
-    navigate(`/scorm-viewer?link=${encodeURIComponent(link)}`);
+  const handleSelect = (link, title) => {
+    setSelectedLesson(`Lớp 5 - ${title}`);
+    navigate(
+      `/scorm-viewer?link=${encodeURIComponent(link)}&lop=Lớp 5&bai=${encodeURIComponent(title)}`
+    );
   };
 
   const currentLessons = selectedSemester === 1 ? lessonsHK1 : lessonsHK2;
@@ -126,7 +127,6 @@ export default function Lop3() {
           minHeight: '100vh',
         }}
       >
-        {/* Nút chọn học kỳ */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4, gap: 2 }}>
           <Button
             variant={selectedSemester === 1 ? 'contained' : 'outlined'}
@@ -160,7 +160,6 @@ export default function Lop3() {
           </Button>
         </Box>
 
-        {/* Tiêu đề danh sách bài học */}
         <Typography variant="h5" fontWeight="bold" color="primary" align="center" sx={{ mb: 2 }}>
           DANH SÁCH BÀI HỌC
         </Typography>
@@ -174,7 +173,28 @@ export default function Lop3() {
           }}
         />
 
-        {/* Danh sách bài học */}
+        {selectedLesson && (
+          <Box
+            sx={{
+              mt: 6,
+              mb: 4,
+              px: 3,
+              py: 2,
+              mx: 'auto',
+              maxWidth: 600,
+              backgroundColor: '#fffde7',
+              border: '2px solid #ffeb3b',
+              borderRadius: 3,
+              textAlign: 'center',
+              boxShadow: 3,
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="primary">
+              {selectedLesson}
+            </Typography>
+          </Box>
+        )}
+
         <Box
           sx={{
             display: 'grid',
@@ -186,7 +206,7 @@ export default function Lop3() {
             <LessonCard
               key={index}
               {...item}
-              onSelect={() => handleSelect(item.link)}
+              onSelect={() => handleSelect(item.link, item.title)}
             />
           ))}
         </Box>

@@ -104,9 +104,13 @@ const LessonCard = ({ title, icon, color, onSelect }) => {
 export default function Lop3() {
   const navigate = useNavigate();
   const [selectedSemester, setSelectedSemester] = useState(1);
+  const [selectedLesson, setSelectedLesson] = useState(null); // lưu bài học đã chọn
 
-  const handleSelect = (link) => {
-    navigate(`/scorm-viewer?link=${encodeURIComponent(link)}`);
+  const handleSelect = (link, title) => {
+    setSelectedLesson(`Lớp 3 - ${title}`);
+    navigate(
+      `/scorm-viewer?link=${encodeURIComponent(link)}&lop=Lớp 3&bai=${encodeURIComponent(title)}`
+    );
   };
 
   const currentLessons = selectedSemester === 1 ? lessonsHK1 : lessonsHK2;
@@ -170,6 +174,30 @@ export default function Lop3() {
           }}
         />
 
+        {/* Dòng hiện tên bài học đã chọn */}
+        {selectedLesson && (
+          <Box
+            sx={{
+              mt: 6, // Tăng khoảng cách tách ra khỏi menu
+              mb: 4,
+              px: 3,
+              py: 2,
+              mx: 'auto',
+              maxWidth: 600,
+              backgroundColor: '#fffde7', // màu vàng nhạt nổi bật hơn
+              border: '2px solid #ffeb3b',
+              borderRadius: 3,
+              textAlign: 'center',
+              boxShadow: 3,
+            }}
+          >
+            <Typography variant="h6" fontWeight="bold" color="primary">
+              {selectedLesson}
+            </Typography>
+          </Box>
+        )}
+
+
         {/* Danh sách bài học */}
         <Box
           sx={{
@@ -182,7 +210,7 @@ export default function Lop3() {
             <LessonCard
               key={index}
               {...item}
-              onSelect={() => handleSelect(item.link)}
+              onSelect={() => handleSelect(item.link, item.title)}
             />
           ))}
         </Box>
