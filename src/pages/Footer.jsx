@@ -15,7 +15,7 @@ export default function Footer() {
       }}
     >
       <Typography variant="body2" color="text.secondary">
-        © 2025 thbinhkhanh@gmail.com. 
+        © 2025 thlamvanben@gmail.com. 
       </Typography>
     </Box>
   );

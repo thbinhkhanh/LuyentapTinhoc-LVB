@@ -10,7 +10,9 @@ import {
 import {
   Box,
   Typography,
+  Modal,
 } from '@mui/material';
+import HomeIcon from '@mui/icons-material/Home';
 
 import Home from './pages/Home';
 import Lop1 from './pages/Lop1';
@@ -21,8 +23,6 @@ import Lop5 from './pages/Lop5';
 import About from './pages/About';
 import Footer from './pages/Footer';
 import HuongDan from './pages/HuongDan';
-
-// Trang riêng để xem bài học SCORM
 import ScormViewer from './pages/ScormViewer';
 
 function App() {
@@ -51,9 +51,10 @@ function App() {
 function Navigation() {
   const location = useLocation();
   const [selectedYear] = useState('2025-2026');
+  const [openLogo, setOpenLogo] = useState(false); // ✅ Trạng thái mở popup logo
 
   const navItems = [
-    { path: '/', name: 'Trang chủ' },
+    { path: '/', name: <HomeIcon /> }, // 🔹 Icon thay cho chữ "Trang chủ"
     { path: '/lop1', name: 'Lớp 1' },
     { path: '/lop2', name: 'Lớp 2' },
     { path: '/lop3', name: 'Lớp 3' },
@@ -62,102 +63,145 @@ function Navigation() {
   ];
 
   return (
-    <nav
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1000,
-        padding: '12px',
-        background: '#1976d2',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        overflowX: 'auto',
-      }}
-    >
-      <div
+    <>
+      <nav
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          padding: '12px',
+          background: '#1976d2',
+          color: 'white',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
-          flexWrap: 'nowrap',
+          justifyContent: 'space-between',
           overflowX: 'auto',
-          paddingRight: '8px',
-          whiteSpace: 'nowrap',
         }}
       >
-        <img
-          src="/Logo.png"
-          alt="Logo"
-          style={{ height: '40px', marginRight: '16px', flexShrink: 0 }}
-        />
-        {navItems.map((item, index) => (
-          <Link
-            key={index}
-            to={item.path}
-            style={{
-              color: 'white',
-              textDecoration: 'none',
-              padding: '8px 12px',
-              backgroundColor:
-                location.pathname === item.path ? '#1565c0' : 'transparent',
-              borderBottom:
-                location.pathname === item.path ? '3px solid white' : 'none',
-              borderRadius: '4px',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {item.name}
-          </Link>
-        ))}
-      </div>
-
-      <Box
-        sx={{
-          display: {
-            xs: 'none',
-            sm: 'flex',
-          },
-          alignItems: 'center',
-          gap: 1,
-          flexShrink: 0,
-        }}
-      >
-        <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
-          Năm học:
-        </Typography>
-        <Box
-          sx={{
-            backgroundColor: 'white',
-            minWidth: 100,
-            maxWidth: 100,
-            borderRadius: 1,
-            height: '32px',
+        <div
+          style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px solid #c4c4c4',
+            gap: '10px',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            paddingRight: '8px',
+            whiteSpace: 'nowrap',
           }}
         >
-          <Typography
+          {/* ✅ Logo có thể click để mở popup */}
+          <img
+            src="/Logo.png"
+            alt="Logo"
+            style={{
+              height: '40px',
+              marginRight: '16px',
+              flexShrink: 0,
+              cursor: 'pointer'
+            }}
+            onClick={() => setOpenLogo(true)}
+          />
+
+          {navItems.map((item, index) => (
+            <Link
+              key={index}
+              to={item.path}
+              style={{
+                color: 'white',
+                textDecoration: 'none',
+                padding: '8px 12px',
+                backgroundColor:
+                  location.pathname === item.path ? '#1565c0' : 'transparent',
+                borderBottom:
+                  location.pathname === item.path ? '3px solid white' : 'none',
+                borderRadius: '4px',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </div>
+
+        <Box
+          sx={{
+            display: {
+              xs: 'none',
+              sm: 'flex',
+            },
+            alignItems: 'center',
+            gap: 1,
+            flexShrink: 0,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
+            Năm học:
+          </Typography>
+          <Box
             sx={{
-              color: '#1976d2',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              textAlign: 'center',
-              padding: '6px 8px',
-              width: '100%',
+              backgroundColor: 'white',
+              minWidth: 100,
+              maxWidth: 100,
+              borderRadius: 1,
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #c4c4c4',
             }}
           >
-            {selectedYear}
-          </Typography>
+            <Typography
+              sx={{
+                color: '#1976d2',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                textAlign: 'center',
+                padding: '6px 8px',
+                width: '100%',
+              }}
+            >
+              {selectedYear}
+            </Typography>
+          </Box>
         </Box>
-      </Box>
-    </nav>
+      </nav>
+
+      {/* ✅ Modal phóng to logo */}
+      <Modal
+        open={openLogo}
+        onClose={() => setOpenLogo(false)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backdropFilter: 'blur(5px)'
+        }}
+      >
+        <Box
+          sx={{
+            outline: 'none',
+            bgcolor: 'transparent',
+          }}
+        >
+          <img
+            src="/Logo.png"
+            alt="Logo lớn"
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+            }}
+          />
+        </Box>
+      </Modal>
+    </>
   );
 }
 
