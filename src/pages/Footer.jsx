@@ -15,7 +15,7 @@ export default function Footer() {
       }}
     >
       <Typography variant="body2" color="text.secondary">
-        © 2025 thlamvanben@gmail.com. 
+        © 2025 TH Lâm Văn Bền 
       </Typography>
     </Box>
   );
