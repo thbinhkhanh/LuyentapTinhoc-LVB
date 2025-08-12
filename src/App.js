@@ -51,10 +51,10 @@ function App() {
 function Navigation() {
   const location = useLocation();
   const [selectedYear] = useState('2025-2026');
-  const [openLogo, setOpenLogo] = useState(false); // ✅ Trạng thái mở popup logo
+  const [openLogo, setOpenLogo] = useState(false);
 
   const navItems = [
-    { path: '/', name: <HomeIcon /> }, // 🔹 Icon thay cho chữ "Trang chủ"
+    { path: '/', name: <HomeIcon /> },
     { path: '/lop1', name: 'Lớp 1' },
     { path: '/lop2', name: 'Lớp 2' },
     { path: '/lop3', name: 'Lớp 3' },
@@ -91,7 +91,7 @@ function Navigation() {
             whiteSpace: 'nowrap',
           }}
         >
-          {/* ✅ Logo có thể click để mở popup */}
+          {/* Logo click mở modal */}
           <img
             src="/Logo.png"
             alt="Logo"
@@ -172,7 +172,7 @@ function Navigation() {
         </Box>
       </nav>
 
-      {/* ✅ Modal phóng to logo */}
+      {/* Modal phóng to logo */}
       <Modal
         open={openLogo}
         onClose={() => setOpenLogo(false)}
@@ -196,8 +196,10 @@ function Navigation() {
               maxWidth: '90vw',
               maxHeight: '90vh',
               borderRadius: '12px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+              cursor: 'pointer'
             }}
+            onClick={() => setOpenLogo(false)} // Bấm vào ảnh sẽ đóng modal
           />
         </Box>
       </Modal>
