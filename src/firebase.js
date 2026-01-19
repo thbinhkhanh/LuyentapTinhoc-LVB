@@ -1,19 +1,20 @@
+// src/firebase.js
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCos379He3soZHU77F4g-yMSsFo3Dq50gw",
-  authDomain: "ban-tru-data.firebaseapp.com",
-  projectId: "ban-tru-data",
-  storageBucket: "ban-tru-data.appspot.com",
-  messagingSenderId: "213526359119",
-  appId: "1:213526359119:web:d2001afd9b7051dcd40e3a"
+  apiKey: "AIzaSyDAhfBnZ3HP0ME2jG6JzY9dR_YO8MB4IxA",
+  authDomain: "tinhoc-lvb.firebaseapp.com",
+  projectId: "tinhoc-lvb",
+  storageBucket: "tinhoc-lvb.firebasestorage.app",
+  messagingSenderId: "14655384833",
+  appId: "1:14655384833:web:f21c5d5900de6a3ce37f00"
 };
 
-// Chỉ khởi tạo Firebase 1 lần
+// Khởi tạo Firebase (tránh init nhiều lần)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Lấy Firestore instance
+// Firestore
 const db = getFirestore(app);
 
 export { db };

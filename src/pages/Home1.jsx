@@ -66,7 +66,6 @@ export default function Home() {
     });
   };
 
-
   return (
     <Box
       sx={{
@@ -79,13 +78,27 @@ export default function Home() {
       <Banner title="LUYỆN TẬP TIN HỌC" />
 
       <Box sx={{ px: 2 }}>
-        <Grid container spacing={3} justifyContent="center" sx={{ mt: 3, mb: 4 }}>
+        <Grid
+          container
+          spacing={3}
+          justifyContent="center"
+          sx={{ mt: 0, mb: 4, flexWrap: "nowrap" }}
+        >
           {khốiList.map((label, index) => (
-            <Grid item xs={12} sm={6} md={4} key={label}>
-              <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.2 }}>
+            <Grid item key={label} sx={{ width: 225 }}>
+              <motion.div
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ duration: 0.2 }}
+              >
                 <Card
                   elevation={4}
-                  sx={{ borderRadius: 2, overflow: "hidden", textAlign: "center", height: "100%" }}
+                  sx={{
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    textAlign: "center",
+                    height: "100%",
+                  }}
                 >
                   <Box
                     sx={{
@@ -103,15 +116,27 @@ export default function Home() {
                       alt={label}
                       width="120px"
                       height="120px"
-                      style={{ borderRadius: "8px", boxShadow: "0 3px 8px rgba(0,0,0,0.1)" }}
+                      style={{
+                        borderRadius: "8px",
+                        boxShadow: "0 3px 8px rgba(0,0,0,0.1)",
+                      }}
                     />
                   </Box>
 
                   <CardContent sx={{ py: 1 }}>
-                    <Typography variant="h6" fontWeight="600" gutterBottom sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }}>
+                    <Typography
+                      variant="h6"
+                      fontWeight="600"
+                      gutterBottom
+                      sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }}
+                    >
                       {label}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: { xs: "0.8rem", sm: "0.9rem" } }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1, fontSize: { xs: "0.8rem", sm: "0.9rem" } }}
+                    >
                       Nhấn để vào bài tập lớp {index + 1}
                     </Typography>
 
@@ -123,7 +148,10 @@ export default function Home() {
                         fontWeight: 600,
                         py: { xs: 0.5, sm: 1 },
                         fontSize: { xs: "0.8rem", sm: "0.9rem" },
-                        "&:hover": { backgroundColor: colorMap[index], filter: "brightness(0.9)" },
+                        "&:hover": {
+                          backgroundColor: colorMap[index],
+                          filter: "brightness(0.9)",
+                        },
                       }}
                       onClick={() => handleClassClick(index)}
                     >
@@ -138,7 +166,10 @@ export default function Home() {
       </Box>
 
       {/* Dialog khi hệ thống bị khóa */}
-      <SystemLockedDialog open={lockedDialogOpen} onClose={() => setLockedDialogOpen(false)} />
+      <SystemLockedDialog
+        open={lockedDialogOpen}
+        onClose={() => setLockedDialogOpen(false)}
+      />
     </Box>
   );
 }
