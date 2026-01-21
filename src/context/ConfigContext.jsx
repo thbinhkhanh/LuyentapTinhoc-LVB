@@ -12,6 +12,7 @@ export const ConfigProvider = ({ children }) => {
     timeLimit: 10,
     showTimer: true,
     locked: false,
+    dangNhapTungBai: false, 
     fullname: "",
     khoi: "",
     lop: "",
@@ -44,7 +45,7 @@ export const ConfigProvider = ({ children }) => {
         const data = snapshot.data();
 
         // thêm cả heThong vào danh sách sync
-        const keysToSync = ["choXemDapAn", "choXemDiem", "timeLimit", "locked", "heThong","showTimer"];
+        const keysToSync = ["choXemDapAn", "choXemDiem", "timeLimit", "locked", "heThong","showTimer","dangNhapTungBai"];
         const filteredData = Object.fromEntries(
           Object.entries(data).filter(([k]) => keysToSync.includes(k))
         );
@@ -88,7 +89,7 @@ export const ConfigProvider = ({ children }) => {
 
     // 3b️⃣ Lưu Firestore (cài đặt chung)
     if (saveToFirestore) {
-      const keysForFirestore = ["choXemDapAn", "choXemDiem", "timeLimit", "locked", "heThong", "showTimer"];
+      const keysForFirestore = ["choXemDapAn", "choXemDiem", "timeLimit", "locked", "heThong", "showTimer","dangNhapTungBai"];
       const firestoreData = Object.fromEntries(
         Object.entries(filtered).filter(([k]) => keysForFirestore.includes(k))
       );

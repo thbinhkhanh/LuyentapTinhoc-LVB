@@ -91,189 +91,193 @@ function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config } = useContext(ConfigContext);
-
-  // ===== STATE (LOCAL ONLY – KHÔNG ĐỒNG BỘ NGUY HIỂM) =====
-  const [loginState, setLoginState] = useState(
-    localStorage.getItem("loggedIn") === "true"
-  );
-  const [lockedDialogOpen, setLockedDialogOpen] = useState(false);
-
-  // ===== PAGE CHECK =====
-  const isInfoPage = location.pathname === "/info";
-  const isExamPage =
-    location.pathname === "/trac-nghiem" ||
-    location.pathname === "/test-de" ||
-    location.pathname === "/scorm-viewer";
-
-  // ===== DISABLE LOGIC =====
-  // ❗ Chưa login → disable menu cơ bản
-  const disableBaseMenu = !loginState;
-  
-  // ❗ Đang Info / đang Thi mà CHƯA login → disable
-  const disableMenu = (isInfoPage || isExamPage) && !loginState;
-
-  // ===== SYNC LOGIN TRONG 1 MÁY =====
-  useEffect(() => {
-    const syncLogin = () => {
-      setLoginState(localStorage.getItem("loggedIn") === "true");
-    };
-
-    window.addEventListener("storage", syncLogin);
-    return () => window.removeEventListener("storage", syncLogin);
-  }, []);
-
   const selectedYear = config.namHoc || "2025-2026";
 
-  // ===== MENU CONFIG =====
+  const [loginState, setLoginState] = useState(false);
+  const [lockedDialogOpen, setLockedDialogOpen] = useState(false); // 🔒 Dialog trạng thái khóa
+
+  useEffect(() => {
+    const docRef = doc(db, 'CONFIG', 'config');
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setLoginState(data.login === true);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const baseItems = [
-    { path: "/", name: "Trang chủ" },
-    { path: "/lop1", name: "Lớp 1", khoi: "Khối 1" },
-    { path: "/lop2", name: "Lớp 2", khoi: "Khối 2" },
-    { path: "/lop3", name: "Lớp 3", khoi: "Khối 3" },
-    { path: "/lop4", name: "Lớp 4", khoi: "Khối 4" },
-    { path: "/lop5", name: "Lớp 5", khoi: "Khối 5" },
+    { path: '/', name: 'Trang chủ' },
+    { path: '/lop1', name: 'Lớp 1', khoi: 'Khối 1' },
+    { path: '/lop2', name: 'Lớp 2', khoi: 'Khối 2' },
+    { path: '/lop3', name: 'Lớp 3', khoi: 'Khối 3' },
+    { path: '/lop4', name: 'Lớp 4', khoi: 'Khối 4' },
+    { path: '/lop5', name: 'Lớp 5', khoi: 'Khối 5' },
   ];
 
   const authItems = loginState
     ? [
-        { path: "/tong-hop-kq", name: "Tổng hợp" },
-        { path: "/soan-de", name: "Soạn đề" },
-        { path: "/test-de", name: "Test đề" },
-        { path: "/quan-tri", name: "Hệ thống" },
+        { path: '/tong-hop-kq', name: 'Tổng hợp' },
+        { path: '/soan-de', name: 'Soạn đề' },
+        { path: '/test-de', name: 'Test đề' },
+        { path: '/quan-tri', name: 'Hệ thống' },
         {
-          path: "/logout",
-          name: "Đăng xuất",
+          path: '/logout',
+          name: 'Đăng xuất',
           action: async () => {
-            // Cập nhật Firestore
-            await setDoc(
-              doc(db, "CONFIG", "config"),
-              { login: false },
-              { merge: true }
-            );
-
-            // Xóa trạng thái login trong localStorage
-            localStorage.setItem("loggedIn", "false");
-
-            // Cập nhật state ngay lập tức
-            setLoginState(false);
-
-            // Điều hướng về trang chủ
-            navigate("/");
+            const docRef = doc(db, 'CONFIG', 'config');
+            await setDoc(docRef, { login: false }, { merge: true });
+            navigate('/');
           },
-        }
-
+        },
       ]
-    : [{ path: "/login", name: "Đăng nhập" }];
+    : [{ path: '/login', name: 'Đăng nhập' }];
 
   const navItems = [...baseItems, ...authItems];
 
-  // ===== CLICK =====
   const handleMenuClick = (item) => {
-    if ((disableMenu || disableBaseMenu) && item.path !== "/login") return;
-
     if (item.action) {
       item.action();
-      return;
-    }
 
-    if (item.khoi) {
+    } else if (item.khoi) {
       if (config.locked) {
         setLockedDialogOpen(true);
         return;
       }
 
-      const soKhoi = item.khoi.replace("Khối ", "");
+      const soKhoi = item.khoi.replace('Khối ', '');
+
+      // ✅ HỆ THỐNG CŨ → VÀO THẲNG LỚP
+      if (config.heThong === 'old') {
+        navigate(`/lop${soKhoi}`);
+        return;
+      }
+
+      // ✅ HỆ THỐNG MỚI → QUA INFO
       const newRouteMap = {
-        "Khối 1": "/lop1-new",
-        "Khối 2": "/lop2-new",
-        "Khối 3": "/lop3-new",
-        "Khối 4": "/lop4-new",
-        "Khối 5": "/lop5-new",
+        'Khối 1': '/lop1-new',
+        'Khối 2': '/lop2-new',
+        'Khối 3': '/lop3-new',
+        'Khối 4': '/lop4-new',
+        'Khối 5': '/lop5-new',
       };
 
-      const targetOld = `/lop${soKhoi}`;
-      const targetNew = newRouteMap[item.khoi];
-
-      if (config.dangNhapTungBai) {
-        navigate(config.heThong === "new" ? targetNew : targetOld);
-      } else {
-        navigate("/info", {
-          state: {
-            khoi: item.khoi,
-            heThong: config.heThong,
-            target: config.heThong === "new" ? targetNew : targetOld,
-          },
-        });
-      }
-      return;
+      navigate('/info', {
+        state: {
+          khoi: item.khoi,
+          heThong: 'new',
+          target: newRouteMap[item.khoi],
+        },
+      });
     }
-
-    navigate(item.path);
+    else {
+      // ✅ BẮT BUỘC PHẢI CÓ
+      navigate(item.path);
+    }
   };
 
-  // ===== RENDER =====
   return (
     <>
       <nav
         style={{
-          position: "fixed",
+          position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
-          height: 48,
-          padding: "0 12px",
-          background: "#1976d2",
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           zIndex: 1000,
+          //padding: '12px',
+          height: '48px',
+padding: '0 12px',
+          background: '#1976d2',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          overflowX: 'auto',
         }}
       >
-        <div style={{ display: "flex", gap: 10, whiteSpace: "nowrap" }}>
-          <img src="/Logo.png" alt="Logo" style={{ height: 32 }} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            paddingRight: '8px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <img
+            src="/Logo.png"
+            alt="Logo"
+            //style={{ height: '40px', marginRight: '16px', flexShrink: 0 }}
+            style={{ height: '32px', marginRight: '12px', flexShrink: 0 }}
 
-          {navItems.map((item, index) => {
-            const isBaseItem = baseItems.some((b) => b.path === item.path);
-            const isLoginItem = item.path === "/login";
-
-            const isDisabled =
-              (disableMenu && !isLoginItem) ||
-              (disableBaseMenu && isBaseItem);
-
-            return (
-              <Box
-                key={index}
-                onClick={() => !isDisabled && handleMenuClick(item)}
-                sx={{
-                  cursor: isDisabled ? "not-allowed" : "pointer",
-                  opacity: isDisabled ? 0.4 : 1,
-                  color: "white",
-                  padding: "4px 10px",
-                }}
-              >
-                {item.name}
-              </Box>
-            );
-          })}
+          />
+          {navItems.map((item, index) => (
+            <Box
+              key={index}
+              onClick={() => handleMenuClick(item)}
+              sx={{
+                cursor: 'pointer',
+                color: 'white',
+                //padding: '8px 12px',
+                padding: '4px 10px',
+                backgroundColor:
+                  location.pathname === item.path ? '#1565c0' : 'transparent',
+                borderBottom:
+                  location.pathname === item.path ? '3px solid white' : 'none',
+                borderRadius: '4px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {item.name}
+            </Box>
+          ))}
         </div>
 
-        <Box sx={{ display: { xs: "none", sm: "flex" }, gap: 1 }}>
-          <Typography fontWeight="bold">Năm học:</Typography>
+        <Box
+          sx={{
+            display: { xs: 'none', sm: 'flex' },
+            alignItems: 'center',
+            gap: 1,
+            flexShrink: 0,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
+            Năm học:
+          </Typography>
           <Box
             sx={{
-              background: "white",
-              color: "#1976d2",
-              px: 1.5,
+              backgroundColor: 'white',
+              minWidth: 100,
+              maxWidth: 100,
               borderRadius: 1,
-              fontWeight: "bold",
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #c4c4c4',
             }}
           >
-            {selectedYear}
+            <Typography
+              sx={{
+                color: '#1976d2',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                textAlign: 'center',
+                padding: '6px 8px',
+                width: '100%',
+              }}
+            >
+              {selectedYear}
+            </Typography>
           </Box>
         </Box>
       </nav>
 
+      {/* Dialog khi hệ thống bị khóa */}
       <SystemLockedDialog
         open={lockedDialogOpen}
         onClose={() => setLockedDialogOpen(false)}
@@ -281,6 +285,5 @@ function Navigation() {
     </>
   );
 }
-
 
 export default App;

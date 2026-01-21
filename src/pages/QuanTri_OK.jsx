@@ -264,7 +264,6 @@ export default function QuanTri() {
             )}
 
             {/* Thời gian làm bài */}
-            {/* Thời gian làm bài */}
             <Box display="flex" alignItems="center" gap={1}>
               <Typography sx={{ minWidth: 140 }}>Thời gian làm bài (phút)</Typography>
               <TextField
@@ -286,7 +285,6 @@ export default function QuanTri() {
               />
               <Typography>Hiển thị đồng hồ đếm ngược</Typography>
             </Box>
-
             
             {/* ===== CHỌN HỆ THỐNG ===== */}
             <Box ml={2} mb={1}>
@@ -311,6 +309,19 @@ export default function QuanTri() {
               </RadioGroup>
 
             </Box>
+            
+            <FormControlLabel
+              sx={{ mt: 1 }}
+              control={
+                <Checkbox
+                  checked={!!config.dangNhapTungBai}
+                  onChange={(e) =>
+                    updateConfigField("dangNhapTungBai", e.target.checked, true)
+                  }
+                />
+              }
+              label="Đăng nhập từng bài"
+            />
 
             {/* Checkboxes */}
             <Box ml={2} mt={1}>

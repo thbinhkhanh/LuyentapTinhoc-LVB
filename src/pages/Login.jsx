@@ -15,9 +15,10 @@ import {
   Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { useNavigate, useLocation } from "react-router-dom";
+
 
 const ACCOUNTS = ["Admin"];
 
@@ -31,6 +32,7 @@ export default function Login() {
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async () => {
     try {
@@ -87,13 +89,23 @@ export default function Login() {
     }
   };
 
-
   const handleClose = () => {
-    navigate("/"); // quay về trang Home nếu đóng
+    const lastExam = JSON.parse(localStorage.getItem("lastExam") || "{}");
+
+    navigate("/info", {
+      replace: true,
+      state: {
+        khoi: lastExam.khoi,
+        disableKhoi: true,
+
+        // ⭐ QUAN TRỌNG: vé quay lại Trắc Nghiệm
+        target: `/trac-nghiem?lop=${lastExam.lop || ""}&bai=${encodeURIComponent(lastExam.bai || "")}`,
+      },
+    });
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", pt: 10, px: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
+    <Box sx={{ minHeight: "100vh", pt: 10, pt: 12, px: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
       <Box sx={{ width: { xs: "95%", sm: 400 }, mx: "auto", position: "relative" }}>
         <Card elevation={10} sx={{ p: 3, borderRadius: 4 }}>
           <IconButton

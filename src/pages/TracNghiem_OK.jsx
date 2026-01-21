@@ -121,47 +121,22 @@ export default function TracNghiem() {
   const tenBai = decodeURIComponent(searchParams.get("bai") || "");
   const lopHoc = searchParams.get("lop");
 
-  useEffect(() => {
-    // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)
-    if (lopHoc || tenBai) {
-      const khoi = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
-
-      localStorage.setItem(
-        "lastExam",
-        JSON.stringify({
-          khoi,
-          lop: lopHoc,
-          bai: tenBai,
-          path: location.pathname + location.search,
-        })
-      );
-    }
-
-    // ✅ 1️⃣ VÉ THÔNG HÀNH (TỪ INFO QUAY LẠI)
-    if (location.state?.fromInfo) {
-      navigate(location.pathname + location.search, { replace: true });
-      return;
-    }
-
-    // ✅ 2️⃣ MỞ LINK TRỰC TIẾP → INFO
-    const khoiFinal = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
-
-    navigate("/info", {
-      replace: true,
-      state: {
-        ...(khoiFinal ? { khoi: khoiFinal } : {}),
-        target: location.pathname + location.search,
-        disableKhoi: true,
-      },
-    });
-  }, []);
-
-
-
   // Đồng bộ thời gian nếu config thay đổi
   useEffect(() => {
     setTimeLeft(timeLimitMinutes * 60);
   }, [timeLimitMinutes]);
+
+  // Kiểm tra dữ liệu học sinh và redirect an toàn
+  useEffect(() => {
+    const hasStudentInfo =
+      (config?.fullname?.trim() || savedStudentInfo.fullname?.trim()) &&
+      (config?.lop?.trim() || savedStudentInfo.lop?.trim());
+
+    if (!hasStudentInfo) {
+      console.warn("❌ Thiếu dữ liệu học sinh, quay lại danh sách");
+      navigate("/hoc-sinh", { replace: true });
+    }
+  }, [config, savedStudentInfo, navigate]);
 
   // Lấy thông tin học sinh tiện dùng
   const studentInfo = {
@@ -784,26 +759,15 @@ return (
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
           onClick={() => {
-            const goToInfo = () => {
-              navigate("/info", {
-                replace: true,
-                state: {
-                  fromExam: true, // ⭐ cờ để disable menu
-                  khoi: `Khối ${lopHoc}`,
-                  target: location.pathname + location.search,
-                },
-              });
-            };
-
-            // ❌ Không tìm thấy đề → quay về Info luôn
+            // Nếu thông báo chứa "❌ Không tìm thấy đề" → thoát ngay
             if (notFoundMessage?.includes("❌ Không tìm thấy đề trắc nghiệm!")) {
-              goToInfo();
-            }
-            // ✅ Đã nộp bài → quay về Info
+              navigate(-1);
+            } 
+            // Nếu đã submit → thoát luôn
             else if (submitted) {
-              goToInfo();
-            }
-            // ⚠️ Chưa nộp → hỏi xác nhận
+              navigate(-1);
+            } 
+            // Chưa submit → mở dialog xác nhận
             else {
               setOpenExitConfirm(true);
             }
@@ -820,7 +784,6 @@ return (
           <CloseIcon />
         </IconButton>
       </Tooltip>
-
 
 
 
@@ -866,7 +829,7 @@ return (
           alignItems: "center",
           mt: 0.5,
           mb: -2,
-          minHeight: 10, // giữ khoảng trống luôn
+          minHeight: 40, // giữ khoảng trống luôn
           width: "100%",
         }}
       >
