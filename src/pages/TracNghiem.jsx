@@ -834,7 +834,7 @@ return (
         }}
       >
         {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
-        {started && !loading && (
+        {started && !loading && config.showTimer && (
           <Box
             sx={{
               display: "flex",
@@ -843,15 +843,19 @@ return (
               px: 3,
               py: 0.5,
               borderRadius: 2,
-              bgcolor: "#fff", // tùy chỉnh nếu muốn nền
+              bgcolor: "#fff",
             }}
           >
             <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: "bold", color: "#d32f2f" }}
+            >
               {formatTime(timeLeft)}
             </Typography>
           </Box>
         )}
+
 
         {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
         <Box

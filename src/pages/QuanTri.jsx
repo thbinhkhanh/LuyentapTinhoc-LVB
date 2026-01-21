@@ -264,16 +264,29 @@ export default function QuanTri() {
             )}
 
             {/* Thời gian làm bài */}
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography sx={{ minWidth: 140 }}>Thời gian làm bài (phút)</Typography>
-              <TextField
-                type="number"
-                size="small"
-                value={timeInput}
-                onChange={(e) => handleTimeLimitChange(e.target.value)}
-                inputProps={{ min: 1, style: { width: 60, textAlign: "center" } }}
-              />
-            </Box>
+            {/* Thời gian làm bài */}
+<Box display="flex" alignItems="center" gap={1}>
+  <Typography sx={{ minWidth: 140 }}>Thời gian làm bài (phút)</Typography>
+  <TextField
+    type="number"
+    size="small"
+    value={timeInput}
+    onChange={(e) => handleTimeLimitChange(e.target.value)}
+    inputProps={{ min: 1, style: { width: 60, textAlign: "center" } }}
+  />
+</Box>
+
+{/* Checkbox ẩn / hiện đồng hồ */}
+<Box display="flex" alignItems="center" gap={1} ml={2}>
+  <Checkbox
+    checked={config.showTimer ?? true}
+    onChange={(e) =>
+      updateConfigField("showTimer", e.target.checked, true)
+    }
+  />
+  <Typography>Hiển thị đồng hồ đếm ngược</Typography>
+</Box>
+
             
             {/* ===== CHỌN HỆ THỐNG ===== */}
             <Box ml={2} mb={1}>
