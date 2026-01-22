@@ -230,7 +230,16 @@ function Navigation() {
           zIndex: 1000,
         }}
       >
-        <div style={{ display: "flex", gap: 10, whiteSpace: "nowrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            whiteSpace: "nowrap",
+            overflowX: "auto",          // ⭐ cho phép cuộn ngang
+            WebkitOverflowScrolling: "touch", // ⭐ mượt trên iOS
+            maxWidth: "100vw",          // ⭐ không tràn viewport
+          }}
+        >
           <img src="/Logo.png" alt="Logo" style={{ height: 32 }} />
 
           {navItems.map((item, index) => {
