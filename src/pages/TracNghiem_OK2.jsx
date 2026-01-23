@@ -26,27 +26,38 @@ import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/fi
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 import { db } from "../firebase";
+//import { useContext } from "react";
+//import { ConfigContext } from "../context/ConfigContext";
+//import { exportQuizPDF } from "../utils/exportQuizPDF"; 
 import { handleSubmitQuiz } from "../utils/submitQuiz";
+//import { autoSubmitQuiz } from "../utils/autoSubmitQuiz";
 import { useConfig } from "../context/ConfigContext";
-import { useQuizContext } from "../context/QuizContext";
+import { useStudentQuizContext } from "../context/StudentQuizContext";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+
+
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
+//import { jsPDF } from "jspdf";
+//import html2canvas from "html2canvas";
+
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
-import OpenExamDialog from "../dialog/OpenExamDialog";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-
 import ResultDialog from "../dialog/ResultDialog";
-import ImageZoomDialog from "../dialog/ImageZoomDialog";
-
 import { useSearchParams } from "react-router-dom";
+import ImageZoomDialog from "../dialog/ImageZoomDialog";
 
 
 // Hàm shuffle mảng
@@ -59,20 +70,20 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiem_Test() {
+export default function TracNghiem() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config } = useConfig();
 
   // 🔹 Lấy học sinh từ context hoặc fallback localStorage
   const savedStudentInfo = JSON.parse(localStorage.getItem("studentInfo") || "{}");
-  const { quizCache, setQuizCache } = useQuizContext();
-  
+
   const studentId = config?.studentId || savedStudentInfo.studentId || "HS001";
   const fullname = config?.fullname || savedStudentInfo.fullname || "";
   const lop = config?.lop || savedStudentInfo.lop || "";
   const khoi = config?.khoi || savedStudentInfo.khoi || "";
   const mon = config?.mon || savedStudentInfo.mon || "Tin học";
+  const { quizCache, setQuizCache } = useStudentQuizContext();
 
   // 🔹 State quiz
   const [questions, setQuestions] = useState([]);
@@ -106,52 +117,63 @@ export default function TracNghiem_Test() {
   const choXemDapAn = config?.choXemDapAn ?? false;
   const timeLimitMinutes = config?.timeLimit ?? 10;
 
-  // Lấy search params từ URL
   const [searchParams] = useSearchParams();
+  const tenBai = decodeURIComponent(searchParams.get("bai") || "");
+  const lopHoc = searchParams.get("lop");
 
-  // Collection và docId từ URL
-  const collectionName = searchParams.get("collection") || ""; 
-  const docId = searchParams.get("bai") || "";                 
-
-  // State lưu tên bài để hiển thị trong Typography
-  const [tenBaiParam, setTenBaiParam] = useState(docId); 
-  
   useEffect(() => {
-    const bai = decodeURIComponent(searchParams.get("bai") || "");
-    setTenBaiParam(bai);
-  }, [searchParams]);
+    // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)
+    if (lopHoc || tenBai) {
+      const khoi = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
 
-  // Dialog mở đề
-  const [openExamDialog, setOpenExamDialog] = useState(false);
-  const handleOpenExamDialog = () => setOpenExamDialog(true);
-  const handleCloseExamDialog = () => setOpenExamDialog(false);
+      localStorage.setItem(
+        "lastExam",
+        JSON.stringify({
+          khoi,
+          lop: lopHoc,
+          bai: tenBai,
+          path: location.pathname + location.search,
+        })
+      );
+    }
 
-  // Lớp và bài được chọn từ dialog
-  const [selectedLop, setSelectedLop] = useState("");
-  const [selectedBai, setSelectedBai] = useState("");
+    // ✅ 1️⃣ VÉ THÔNG HÀNH (TỪ INFO QUAY LẠI)
+    if (location.state?.fromInfo) {
+      navigate(location.pathname + location.search, { replace: true });
+      return;
+    }
+
+    // ✅ 2️⃣ MỞ LINK TRỰC TIẾP → INFO
+    const khoiFinal = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
+
+    navigate("/info", {
+      replace: true,
+      state: {
+        ...(khoiFinal ? { khoi: khoiFinal } : {}),
+        target: location.pathname + location.search,
+        disableKhoi: true,
+      },
+    });
+  }, []);
+
+
 
   // Đồng bộ thời gian nếu config thay đổi
   useEffect(() => {
     setTimeLeft(timeLimitMinutes * 60);
   }, [timeLimitMinutes]);
 
-  // Tên học sinh
-const studentName = "Tên học sinh";
+  // Lấy thông tin học sinh tiện dùng
+  const studentInfo = {
+    id: studentId,
+    name: fullname,
+    className: lop,
+    khoi,
+    mon,
+  };
 
-// Lấy số lớp từ selectedLop
-const lopSo = selectedLop ? selectedLop.slice(-1) : "";
-
-// Lớp hiển thị (in hoa)
-const studentClass = lopSo ? `${lopSo}` : "CHƯA CHỌN LỚP";
-
-// Thông tin học sinh
-const studentInfo = {
-  id: "HS_TEST",
-  name: studentName.toUpperCase(),  // in hoa
-  className: studentClass,          // hiển thị "LỚP: 5"
-  khoi: lopSo,                      // số lớp thuần
-  mon: "TIN HỌC",                   // môn in hoa
-};
+  const studentClass = studentInfo.className;
+  const studentName = studentInfo.name;
 
   useEffect(() => {
     if (started && !startTime) {
@@ -202,104 +224,98 @@ const studentInfo = {
   }
 
   useEffect(() => {
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
 
-      const lopHocParam = selectedLop;
-      const tenBaiParam = selectedBai;
-
-      if (!lopHocParam || !tenBaiParam) {
-        setSnackbar({
-          open: true,
-          message: "❌ Thiếu lớp hoặc tên bài học",
-          severity: "error",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const CACHE_KEY = `quiz_${lopHocParam}_${tenBaiParam}`;
-      const collectionName = `TRACNGHIEM${lopHocParam}`;
-      const docId = tenBaiParam;
-
-      // =======================
-      // 🔥 1. LUÔN ĐỌC FIRESTORE TRƯỚC (lấy updatedAt)
-      // =======================
-      const docRef = doc(db, collectionName, docId);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        const msg = `❌ Không tìm thấy đề ${docId}!`;
-        setSnackbar({ open: true, message: msg, severity: "error" });
-        setNotFoundMessage(msg);
-        setLoading(false);
-        return;
-      }
-
-      const data = docSnap.data();
-      const serverUpdatedAt =
-        typeof data.updatedAt === "number"
-          ? data.updatedAt
-          : data.updatedAt?.toMillis?.() ?? 0;
-
-      // =======================
-      // ✅ 2. CONTEXT (VALIDATE)
-      // =======================
-      const cacheFromContext = quizCache?.[CACHE_KEY];
-      if (
-        cacheFromContext &&
-        cacheFromContext.updatedAt === serverUpdatedAt &&
-        Array.isArray(cacheFromContext.questions)
-      ) {
-        //console.log("🧠 LOAD FROM CONTEXT (VALID)");
-
-        setQuestions(cacheFromContext.questions);
-        setQuizClass(cacheFromContext.class || "");
-        setAnswers({});
-        setSubmitted(false);
-        setCurrentIndex(0);
-        setFillBlankStatus({});
-        setProgress(100);
-        setStarted(true);
-        setLoading(false);
-        return;
-      }
-
-      //console.log("🧠 CONTEXT INVALID → SKIP");
-
-      // =======================
-      // ✅ 3. LOCALSTORAGE (VALIDATE)
-      // =======================
-      const cachedLocal = localStorage.getItem(CACHE_KEY);
-      if (cachedLocal) {
-        const parsed = JSON.parse(cachedLocal);
-
-        if (parsed.updatedAt === serverUpdatedAt) {
-          //console.log("💾 LOAD FROM LOCALSTORAGE (VALID)");
-
-          setQuestions(parsed.questions);
-          setQuizClass(parsed.class || "");
-          setAnswers({});
-          setSubmitted(false);
-          setCurrentIndex(0);
-          setFillBlankStatus({});
-          setProgress(100);
-          setStarted(true);
-
-          // ⚠️ SYNC LẠI CONTEXT DẠNG MAP (KHÔNG GHI ĐÈ)
-          setQuizCache(prev => ({
-            ...prev,
-            [CACHE_KEY]: parsed,
-          }));
-
+        // =======================
+        // ❌ CHẶN LỖI NGAY ĐẦU
+        // =======================
+        if (!lopHoc || !tenBai) {
+          setSnackbar({
+            open: true,
+            message: "❌ Thiếu lớp hoặc tên bài học",
+            severity: "error",
+          });
           setLoading(false);
           return;
-        } else {
-          //console.log("🗑 LOCALSTORAGE INVALID → REMOVE");
-          localStorage.removeItem(CACHE_KEY);
         }
-      }
+
+        const CACHE_KEY = `quiz_${lopHoc}_${tenBai}`;
+        const collectionName = `TRACNGHIEM${lopHoc}`;
+        const docId = tenBai;
+
+        // =======================
+        // 🔥 1. LUÔN ĐỌC FIRESTORE TRƯỚC (LẤY updatedAt)
+        // =======================
+        const docRef = doc(db, collectionName, docId);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          const msg = "❌ Không tìm thấy đề trắc nghiệm!";
+          setSnackbar({ open: true, message: msg, severity: "error" });
+          setNotFoundMessage(msg);
+          setLoading(false);
+          return;
+        }
+
+        const data = docSnap.data();
+        const serverUpdatedAt =
+          typeof data.updatedAt === "number"
+            ? data.updatedAt
+            : data.updatedAt?.toMillis?.() ?? 0;
+
+        // =======================
+        // ✅ 2. CONTEXT (VALIDATE)
+        // =======================
+        const cacheFromContext = quizCache?.[CACHE_KEY];
+
+        if (
+          cacheFromContext &&
+          cacheFromContext.updatedAt === serverUpdatedAt &&
+          Array.isArray(cacheFromContext.questions)
+        ) {
+          //console.log("🧠 LOAD FROM CONTEXT (VALID)", CACHE_KEY);
+
+          setQuestions(cacheFromContext.questions);
+          setQuizClass(cacheFromContext.class || "");
+          setStarted(true);
+          setProgress(100);
+          setLoading(false);
+          return;
+        }
+
+        // =======================
+        // ✅ 3. LOCALSTORAGE (VALIDATE)
+        // =======================
+        const stored = localStorage.getItem(CACHE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+
+          if (
+            parsed.updatedAt === serverUpdatedAt &&
+            Array.isArray(parsed.questions)
+          ) {
+            //console.log("💾 LOAD FROM LOCALSTORAGE (VALID)", CACHE_KEY);
+
+            setQuestions(parsed.questions);
+            setQuizClass(parsed.class || "");
+            setStarted(true);
+            setProgress(100);
+
+            // ✅ sync lại context (LƯU NHIỀU ĐỀ)
+            setQuizCache(prev => ({
+              ...prev,
+              [CACHE_KEY]: parsed,
+            }));
+
+            setLoading(false);
+            return;
+          } else {
+            // ❌ đề cũ → xoá
+            localStorage.removeItem(CACHE_KEY);
+          }
+        }
 
         // --- Xử lý câu hỏi ---
         let saved = Array.isArray(data.questions) ? data.questions : [];
@@ -318,38 +334,27 @@ const studentInfo = {
             const pairs = Array.isArray(q.pairs) ? q.pairs : [];
             if (pairs.length === 0) return null;
 
-            // Chuẩn hóa cột trái
+            //console.log("🔥 RAW MATCHING PAIRS:", pairs);
+
             const leftOptions = pairs.map((p, idx) => {
-              // CASE 1: leftImage
-              if (p.leftImage?.url) {
+              // --- CASE 1: editor lưu { leftImage: { url, name } } ---
+              if (p.leftImage && p.leftImage.url) {
+                //console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
                 return { type: "image", url: p.leftImage.url, name: p.leftImage.name || `img-${idx}` };
               }
 
-              // CASE 2: leftIconImage + optional text
-              if (p.leftIconImage?.url) {
-                return {
-                  type: "icon",
-                  url: p.leftIconImage.url,
-                  name: p.leftIconImage.name || `icon-${idx}`,
-                  text: p.left ?? "", // giữ text nếu có
-                };
-              }
-
-              // CASE 3: left là URL string
+              // --- CASE 2: left là chuỗi URL ---
               if (typeof p.left === "string" && /^https?:\/\//i.test(p.left.trim())) {
+                //console.log(`🔥 left[${idx}] = URL`, p.left);
                 return { type: "image", url: p.left.trim(), name: `img-${idx}` };
               }
 
-              // CASE 4: left là text bình thường
-              if (typeof p.left === "string") {
-                return { type: "text", text: p.left };
-              }
-
-              // fallback: trả về text rỗng
-              return { type: "text", text: "" };
+              // --- CASE 3: để nguyên dạng text ---
+              //console.log(`🔥 left[${idx}] = text`, p.left);
+              return p.left ?? "";
             });
 
-            // Cột phải: đảo nếu cần
+            // cột phải: đảo cho đến khi khác ít nhất 1 phần tử
             const rightOptionsOriginal = pairs.map((p, idx) => ({ opt: p.right, idx }));
             const processedRightOptions =
               q.sortType === "shuffle"
@@ -369,7 +374,7 @@ const studentInfo = {
               type,
               question: questionText,
               image: q.image ?? null,
-              leftOptions, // chuẩn hóa: type = "image" | "icon" | "text"
+              leftOptions,
               rightOptions: processedRightOptions.map(i => i.opt),
               correct: newCorrect,
               score: q.score ?? 1,
@@ -509,6 +514,7 @@ const studentInfo = {
           return null;
         }).filter(Boolean);
 
+
         // --- Lọc câu hợp lệ bao gồm fillblank ---
         const validQuestions = loadedQuestions.filter(q => {
           if (q.type === "matching") return q.question.trim() !== "" && q.leftOptions.length > 0 && q.rightOptions.length > 0;
@@ -520,26 +526,31 @@ const studentInfo = {
         });
 
         setQuestions(validQuestions);
-        setProgress(100);
-        setStarted(true);
-
         // =======================
-        // ✅ LƯU CACHE SAU FETCH
+        // ✅ LƯU CONTEXT + STORAGE
         // =======================
         const cachePayload = {
-          key: `quiz_${lopHocParam}_${tenBaiParam}`,
-          questions: validQuestions,
+          key: CACHE_KEY,
+          lopHoc,
+          tenBai,
           class: data.class || "",
-          updatedAt: serverUpdatedAt, // ⭐ BẮT BUỘC
+          questions: validQuestions,
+
+          updatedAt: serverUpdatedAt, // ✅ BẮT BUỘC
+          savedAt: Date.now(),        // (tuỳ, để debug)
         };
+
 
         setQuizCache(prev => ({
           ...prev,
-          [CACHE_KEY]: cachePayload,
+          [CACHE_KEY]: cachePayload
         }));
 
-        localStorage.setItem(cachePayload.key, JSON.stringify(cachePayload));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
 
+
+        setProgress(100);
+        setStarted(true);
 
         setAnswers(prev => {
           const next = { ...prev };
@@ -553,7 +564,6 @@ const studentInfo = {
           return next;
         });
 
-
       } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
         setQuestions([]);
@@ -563,7 +573,7 @@ const studentInfo = {
     };
 
     fetchQuestions();
-  }, [selectedLop, selectedBai]);
+  }, [tenBai, lopHoc]);
 
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
@@ -573,6 +583,21 @@ const studentInfo = {
       .filter(word => word.trim() !== "")
       .map(word => word[0].toUpperCase() + word.slice(1))
       .join(" ");
+
+  // Sử dụng:
+  const hoVaTen = capitalizeName(studentName);
+
+  /*function mapHocKyToDocKey(loaiKT) {
+    switch (loaiKT) {
+      case "Giữa kỳ I": return "GKI";
+      case "Cuối kỳ I": return "CKI";
+      case "Giữa kỳ II": return "GKII";
+      case "Cả năm": return "CN";
+      default:
+        console.warn("❌ Loại kiểm tra không xác định:", loaiKT);
+        return "UNKNOWN";
+    }
+  }*/
 
   const getQuestionMax = (q) => {
     // Nếu có scoreTotal thì dùng (tổng sẵn của câu)
@@ -625,7 +650,6 @@ const studentInfo = {
       getQuestionMax,
       capitalizeName,
       formatTime,
-      isTestMode: true,
     });
 
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
@@ -640,12 +664,18 @@ const studentInfo = {
     return Math.ceil(raw);
   };
 
+/*useEffect(() => {
+    if (config.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config.timeLimit]);*/
+
   function reorder(list, startIndex, endIndex) {
     const result = Array.from(list);
     const [removed] = result.splice(startIndex, 1);
     result.splice(endIndex, 0, removed);
     return result;
   }
+
+  // Giả sử bạn đang dùng useState để lưu đáp án
 
 // Single: luôn lưu là số index
 const handleSingleSelect = (questionId, optionIndex) => {
@@ -720,8 +750,6 @@ const normalizeValue = (val) => {
   return String(val).trim();
 };
 
-const ratio = currentQuestion?.columnRatio || { left: 1, right: 1 };
-
 return (
   <Box
     id="quiz-container"
@@ -731,7 +759,7 @@ return (
       flexDirection: "column",
       alignItems: "center",
       background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)",
-      pt: { xs: 10, sm: 10 }, 
+      pt: { xs: 10, sm: 10 }, // <-- Thêm khoảng trống trên như trang mẫu
       px: { xs: 1, sm: 2 },
     }}
   >
@@ -741,44 +769,41 @@ return (
         borderRadius: 3,
         width: "100%",
         maxWidth: 1000,
-        minWidth: { xs: "auto", sm: 700 },   
-        minHeight: { xs: "auto", sm: 650 },  
+        minWidth: { xs: "auto", sm: 700 },   // sửa minWidth giống mẫu
+        minHeight: { xs: "auto", sm: 650 },  // sửa minHeight giống mẫu
         display: "flex",
         flexDirection: "column",
         gap: 2,
         position: "relative",
         boxSizing: "border-box",
-        backgroundColor: "#fff",             
+        backgroundColor: "#fff",             // thêm nền trắng giống mẫu
         pb: 3,
       }}
     >
-      <Tooltip title="Mở đề trắc nghiệm">
-        <IconButton
-          onClick={handleOpenExamDialog}
-          sx={{
-            position: "absolute", 
-            top: 8,
-            left: 8,
-            color: "#1976d2",
-          }}
-        >
-          <FolderOpenIcon fontSize="medium" />
-        </IconButton>
-      </Tooltip>
-
       {/* Nút thoát */}
       <Tooltip title="Thoát trắc nghiệm" arrow>
         <IconButton
           onClick={() => {
-            // Nếu thông báo chứa "❌ Không tìm thấy đề" → thoát ngay
-            if (notFoundMessage?.includes("❌ Không tìm thấy đề")) {
-              navigate(-1);
-            } 
-            // Nếu đã submit → thoát luôn
+            const goToInfo = () => {
+              navigate("/info", {
+                replace: true,
+                state: {
+                  fromExam: true, // ⭐ cờ để disable menu
+                  khoi: `Khối ${lopHoc}`,
+                  target: location.pathname + location.search,
+                },
+              });
+            };
+
+            // ❌ Không tìm thấy đề → quay về Info luôn
+            if (notFoundMessage?.includes("❌ Không tìm thấy đề trắc nghiệm!")) {
+              goToInfo();
+            }
+            // ✅ Đã nộp bài → quay về Info
             else if (submitted) {
-              navigate(-1);
-            } 
-            // Chưa submit → mở dialog xác nhận
+              goToInfo();
+            }
+            // ⚠️ Chưa nộp → hỏi xác nhận
             else {
               setOpenExitConfirm(true);
             }
@@ -796,15 +821,41 @@ return (
         </IconButton>
       </Tooltip>
 
+
+
+
+      {/* Thông tin học sinh */}
+      {/*<Box
+        sx={{
+          p: 1.5,
+          border: "2px solid #1976d2",
+          borderRadius: 2,
+          color: "#1976d2",
+          width: "fit-content",
+          mb: 2,
+          position: { xs: "relative", sm: "absolute" },
+          top: { sm: 16 },
+          left: { sm: 16 },
+          alignSelf: { xs: "flex-start", sm: "auto" },
+          bgcolor: { xs: "#fff", sm: "transparent" },
+          zIndex: 2,
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold">
+          Tên: {capitalizeName(studentInfo.name)}
+        </Typography>
+        <Typography variant="subtitle1" fontWeight="bold">
+          Lớp: {studentInfo.className} 
+        </Typography>*
+      </Box>*/}
+
       {/* Tiêu đề */}
       <Typography
         variant="h6"
         fontWeight="bold"
         sx={{ color: "#1976d2", mb: { xs: 1, sm: -1 }, textAlign: "center" }}
       >
-        {selectedBai
-         ? `LỚP ${String(selectedLop).toUpperCase()} - ${String(selectedBai).toUpperCase()}`
-          : "TRẮC NGHIỆM"}
+        {tenBai ? tenBai.toUpperCase() : "TRẮC NGHIỆM"}
       </Typography>
 
       {/* Đồng hồ với vị trí cố định */}
@@ -815,12 +866,12 @@ return (
           alignItems: "center",
           mt: 0.5,
           mb: -2,
-          minHeight: 40, // giữ khoảng trống luôn
+          minHeight: 10, // giữ khoảng trống luôn
           width: "100%",
         }}
       >
         {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
-        {started && !loading && (
+        {started && !loading && config.showTimer && (
           <Box
             sx={{
               display: "flex",
@@ -829,15 +880,19 @@ return (
               px: 3,
               py: 0.5,
               borderRadius: 2,
-              bgcolor: "#fff", // tùy chỉnh nếu muốn nền
+              bgcolor: "#fff",
             }}
           >
             <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-            <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: "bold", color: "#d32f2f" }}
+            >
               {formatTime(timeLeft)}
             </Typography>
           </Box>
         )}
+
 
         {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
         <Box
@@ -849,7 +904,6 @@ return (
           }}
         />
       </Box>
-
 
       {/* Loading */}
       {loading && (
@@ -1133,8 +1187,7 @@ return (
                         {/* ================= LEFT ================= */}
                         <Paper
                           sx={{
-                            flexGrow: ratio.left,
-                            flexBasis: 0,
+                            flex: 1,
                             display: "flex",
                             alignItems: "center",
                             gap: 1.5,
@@ -1194,7 +1247,7 @@ return (
                             <Stack
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              sx={{ flexGrow: ratio.right, flexBasis: 0, }}
+                              sx={{ flex: 1 }}
                             >
                               <Draggable
                                 key={rightIdx}
@@ -2044,6 +2097,26 @@ return (
         </Stack>
       )}
 
+
+      {/*{notFoundMessage && (
+        <Card
+          sx={{
+            bgcolor: "#ffebee",
+            border: "1px solid #f44336",
+            p: 2,
+            mb: 2,
+            width: "60%",    // chiếm 50% chiều rộng
+            mx: "auto",      // căn giữa ngang
+            mt: 4            // optional: thêm khoảng cách từ trên
+          }}
+        >
+          <Typography
+            sx={{ color: "#d32f2f", fontWeight: "bold", fontSize: "1.5rem", textAlign: "center" }}
+          >
+            {notFoundMessage}
+          </Typography>
+        </Card>
+      )}*/}
     </Paper>
 
     {/* Dialog câu chưa làm */}
@@ -2071,27 +2144,27 @@ return (
       convertPercentToScore={convertPercentToScore}
     />
 
-    <OpenExamDialog
-      open={openExamDialog}
-      onClose={() => setOpenExamDialog(false)}
-      onSelectExam={(lop, bai) => {
-        //console.log("🔥 Parent nhận:", { lop, bai });
-
-        // Chỉ update state để useEffect chạy
-        setSelectedLop(lop);
-        setSelectedBai(bai);
-
-        // Đóng dialog
-        setOpenExamDialog(false);
-      }}
-    />
-
     <ImageZoomDialog
       open={Boolean(zoomImage)}
       imageSrc={zoomImage}
       onClose={() => setZoomImage(null)}
     />
 
+    {/* Snackbar */}
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    >
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
   </Box>
 );
 
