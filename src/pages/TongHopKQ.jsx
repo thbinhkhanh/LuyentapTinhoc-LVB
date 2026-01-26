@@ -458,7 +458,7 @@ export default function TongHopKQ() {
 
   return (
     <Box sx={{ minHeight: "100vh", pt: 10, px: 3, background: "linear-gradient(to bottom, #e3f2fd, #bbdefb)", display: "flex", justifyContent: "center" }}>
-      <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 900, position: "relative" }} elevation={6}>
+      <Paper sx={{ p: 4, borderRadius: 3, width: "100%", maxWidth: 920, position: "relative" }} elevation={6}>
 
         <Box sx={{ position: "absolute", top: 16, left: 16 }}>
           <Stack direction="row" spacing={1}>
@@ -525,78 +525,88 @@ export default function TongHopKQ() {
         </Box>
 
         {/* Table */}
-        {loading ? <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box> :
-          <Box sx={{ width: "100%", overflowX: "auto" }}>
-            <TableContainer component={Paper} sx={{ boxShadow: "none", minWidth: 700 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell
-                      sx={{ width: 60, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      STT
-                    </TableCell>
+        {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Box sx={{ width: "100%", overflowX: "auto" }}>
+          <TableContainer component={Paper} sx={{ boxShadow: "none", minWidth: 700 }}>
+            <Table
+              size="small"
+              sx={{
+                tableLayout: "fixed", // ✅ QUAN TRỌNG: CỐ ĐỊNH ĐỘ RỘNG
+              }}
+            >
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ width: 60, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    STT
+                  </TableCell>
+                  <TableCell sx={{ width: 180, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Họ và tên
+                  </TableCell>
+                  <TableCell sx={{ width: 80, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Tên bài học
+                  </TableCell>
+                  <TableCell sx={{ width: 80, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Điểm
+                  </TableCell>
+                  <TableCell sx={{ width: 80, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Thời gian
+                  </TableCell>
+                  <TableCell sx={{ width: 90, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Ngày
+                  </TableCell>
+                  <TableCell sx={{ width: 110, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}>
+                    Số lần kiểm tra
+                  </TableCell>
+                </TableRow>
+              </TableHead>
 
-                    <TableCell
-                      sx={{ minWidth: 180, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      Họ và tên
+              <TableBody>
+                {(results.length > 0
+                  ? results
+                  : Array.from({ length: 5 }, (_, i) => ({ stt: i + 1 }))
+                ).map((r) => (
+                  <TableRow key={r.stt}>
+                    <TableCell sx={{ width: 60, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+                      {r.stt}
                     </TableCell>
-
                     <TableCell
-                      sx={{ minWidth: 100, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
+                      sx={{
+                        width: 180,
+                        textAlign: "left",
+                        border: "1px solid rgba(0,0,0,0.12)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
                     >
-                      Tên bài học
+                      {r.hoVaTen}
                     </TableCell>
-
-                    <TableCell
-                      sx={{ width: 100, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      Điểm
+                    <TableCell sx={{ width: 80, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+                      {r.bai}
                     </TableCell>
-
-                    <TableCell
-                      sx={{ width: 100, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      Thời gian
+                    <TableCell sx={{ width: 80, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)", fontWeight: "bold" }}>
+                      {r.diem}
                     </TableCell>
-
-                    <TableCell
-                      sx={{ width: 100, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      Ngày
+                    <TableCell sx={{ width: 80, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+                      {r.thoiGianLamBai}
                     </TableCell>
-
-                    <TableCell
-                      sx={{ width: 150, bgcolor: "#1976d2", color: "#fff", textAlign: "center" }}
-                    >
-                      Số lần kiểm tra
+                    <TableCell sx={{ width: 90, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+                      {r.ngayKiemTra}
+                    </TableCell>
+                    <TableCell sx={{ width: 110, textAlign: "center", border: "1px solid rgba(0,0,0,0.12)" }}>
+                      {r.soLan}
                     </TableCell>
                   </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {(results.length > 0 ? results : Array.from({ length: 5 }, (_, i) => ({ stt:i+1, hoVaTen:"", diem:"", thoiGianLamBai:"", ngayKiemTra:"" }))).map(r => (
-                    <TableRow key={r.stt}>
-                      <TableCell sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)" }}>{r.stt}</TableCell>
-                      <TableCell sx={{ textAlign:"left", border:"1px solid rgba(0,0,0,0.12)" }}>{r.hoVaTen}</TableCell>
-                      <TableCell
-                        sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)" }}
-                      >
-                        {r.bai}
-                      </TableCell>
-
-                      <TableCell sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)", fontWeight:"bold" }}>{r.diem}</TableCell>
-                      <TableCell sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)" }}>{r.thoiGianLamBai}</TableCell>
-                      <TableCell sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)" }}>{r.ngayKiemTra}</TableCell>
-                      <TableCell sx={{ textAlign:"center", border:"1px solid rgba(0,0,0,0.12)" }}>{r.soLan}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        }
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
 
         {/* Snackbar */}
         <Snackbar open={snackbarOpen} autoHideDuration={3000} onClose={() => setSnackbarOpen(false)} anchorOrigin={{ vertical:"bottom", horizontal:"right" }}>
