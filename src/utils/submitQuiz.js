@@ -14,6 +14,7 @@ const normalizeValue = (val) => {
 export const handleSubmitQuiz = async ({
   studentName,
   studentClass,
+  tenBaiRutGon,
   setStudentResult,
   setSnackbar,
   setSaving,
@@ -150,7 +151,7 @@ export const handleSubmitQuiz = async ({
     // --- Hiển thị kết quả ---
     setStudentResult({
       hoVaTen: capitalizeName(studentName),
-      lop: studentClass,
+      bai: tenBaiRutGon,
       diem: total,
       diemTN: phanTram,
     });
@@ -158,66 +159,89 @@ export const handleSubmitQuiz = async ({
 
     // --- FIRESTORE (chỉ lưu nếu không phải test mode) ---
     if (!isTestMode) {
-      try {
-        const classKey = studentClass.replace(".", "_");
-        const studentDocId = normalizeName(studentName);
-        const hsRef = doc(db, "DATA", classKey, "HOCSINH", studentDocId);
+  try {
+    const classKey = studentClass.replace(".", "_");
+    const studentDocId = normalizeName(studentName);
 
-        // Quy đổi % sang điểm thang 10 (làm tròn)
-        const diemQuyDoi = Math.round(phanTram / 10);
+    // ref học sinh
+    const hsRef = doc(db, "DATA", classKey, "HOCSINH", studentDocId);
 
-        const docSnap = await getDoc(hsRef);
+    // đảm bảo học sinh tồn tại
+    await setDoc(
+      hsRef,
+      {
+        hoVaTen: capitalizeName(studentName),
+        lop: studentClass,
+        mon: "Tin học"
+      },
+      { merge: true }
+    );
 
-        if (docSnap.exists()) {
-          const existingData = docSnap.data();
-          const currentSoLan = existingData.soLan ?? 0;
-          const currentDiem = existingData.diem ?? 0;
-
-          const updates = {
-            soLan: currentSoLan + 1 // luôn tăng số lần
-          };
-
-          // Chỉ ghi đè nếu điểm mới cao hơn
-          if (diemQuyDoi > currentDiem) {
-            updates.diem = diemQuyDoi;
-            updates.ngayKiemTra = ngayKiemTra;
-            updates.thoiGianLamBai = durationStr;
-          }
-
-          await setDoc(
-            hsRef,
-            {
-              hoVaTen: capitalizeName(studentName),
-              lop: studentClass,
-              ...updates
-            },
-            { merge: true }
-          );
-
-          console.log("✅ Cập nhật kết quả học sinh thành công!");
-        } else {
-          // Chưa có học sinh → tạo mới
-          await setDoc(
-            hsRef,
-            {
-              hoVaTen: capitalizeName(studentName),
-              lop: studentClass,
-              diem: diemQuyDoi,
-              ngayKiemTra,
-              thoiGianLamBai: durationStr,
-              soLan: 1
-            },
-            { merge: true }
-          );
-
-          console.log("✅ Lưu kết quả học sinh thành công!");
-        }
-      } catch (err) {
-        console.error("❌ Lỗi lưu kết quả học sinh:", err);
-      }
-    } else {
-      console.log("ℹ️ Test mode: không lưu vào Firestore");
+    // ---- BÀI THI ----
+    if (!tenBaiRutGon) {
+      console.error("❌ Thiếu tên bài rút gọn");
+      return;
     }
+
+    const baiDocId = tenBaiRutGon
+      .replace(/\s+/g, "_")
+      .replace(/\./g, "");
+
+    const baiRef = doc(
+      db,
+      "DATA",
+      classKey,
+      "HOCSINH",
+      studentDocId,
+      "BAITHI",
+      baiDocId
+    );
+
+    const diemQuyDoi = Math.round(phanTram / 10);
+
+    const baiSnap = await getDoc(baiRef);
+
+    if (baiSnap.exists()) {
+      // 🔁 ĐÃ CÓ BÀI → UPDATE
+      const data = baiSnap.data();
+      const currentSoLan = data.soLan ?? 0;
+      const currentDiem = data.diem ?? 0;
+
+      const updates = {
+        soLan: currentSoLan + 1
+      };
+
+      if (diemQuyDoi > currentDiem) {
+        updates.diem = diemQuyDoi;
+        updates.diemTN = phanTram;
+        updates.ngayKiemTra = ngayKiemTra;
+        updates.thoiGianLamBai = durationStr;
+      }
+
+      await setDoc(baiRef, updates, { merge: true });
+      console.log("✅ Cập nhật bài:", tenBaiRutGon);
+
+    } else {
+      // 🆕 CHƯA CÓ BÀI → TẠO MỚI
+      await setDoc(baiRef, {
+        bai: tenBaiRutGon,
+        diem: diemQuyDoi,
+        diemTN: phanTram,
+        ngayKiemTra,
+        thoiGianLamBai: durationStr,
+        soLan: 1
+      });
+
+      console.log("✅ Lưu bài mới:", tenBaiRutGon);
+    }
+
+  } catch (err) {
+    console.error("❌ Lỗi lưu bài thi:", err);
+  }
+} else {
+  console.log("ℹ️ Test mode: không lưu Firestore");
+}
+
 
 
 

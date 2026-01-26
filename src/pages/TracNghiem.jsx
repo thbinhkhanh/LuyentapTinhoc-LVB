@@ -121,6 +121,14 @@ export default function TracNghiem() {
   const tenBai = decodeURIComponent(searchParams.get("bai") || "");
   const lopHoc = searchParams.get("lop");
 
+  const tenBaiRutGon = getTenBaiRutGon(tenBai);
+  
+  function getTenBaiRutGon(tenBai) {
+    if (!tenBai) return "";
+    const match = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
+    return match ? match[0] : tenBai;
+  }
+
   useEffect(() => {
     // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)
     if (lopHoc || tenBai) {
@@ -132,6 +140,7 @@ export default function TracNghiem() {
           khoi,
           lop: lopHoc,
           bai: tenBai,
+          bai: tenBaiRutGon, // ✅ dùng rút gọn
           path: location.pathname + location.search,
         })
       );
@@ -155,8 +164,6 @@ export default function TracNghiem() {
       },
     });
   }, []);
-
-
 
   // Đồng bộ thời gian nếu config thay đổi
   useEffect(() => {
@@ -632,6 +639,7 @@ export default function TracNghiem() {
     handleSubmitQuiz({
       studentName,
       studentClass,
+      tenBaiRutGon,
       studentId,
       studentInfo,
       studentResult,
