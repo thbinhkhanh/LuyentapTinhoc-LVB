@@ -607,15 +607,18 @@ const handleSaveAll = async () => {
               ) : (
                 /* ===== THÊM BÀI HỌC – 1 HÀNG (TỔNG = 600px) ===== */
                 <Stack
-                  direction="row"
+                  direction={{ xs: "column", md: "row" }}
                   spacing={2}
-                  alignItems="center"
+                  alignItems={{ xs: "stretch", md: "center" }}
                   sx={{ width: "100%" }} // = 600px
                 >
-                  {/* Ô TUẦN – 110px CỐ ĐỊNH (KHÔNG CO) */}
+                  {/* Ô TUẦN – 110px */}
                   <FormControl
                     size="small"
-                    sx={{ flex: "0 0 110px" }}
+                    sx={{
+                      width: { xs: "100%", md: 110 },
+                      flexShrink: 0,
+                    }}
                   >
                     <InputLabel>Tuần</InputLabel>
                     <Select
@@ -631,49 +634,27 @@ const handleSaveAll = async () => {
                     </Select>
                   </FormControl>
 
-                  {/* Ô TÊN BÀI HỌC MỚI – 474px CỐ ĐỊNH (KHÔNG CO) */}
+                  {/* Ô TÊN BÀI HỌC MỚI – 474px CHUẨN */}
                   <TextField
                     size="small"
                     label="Tên bài học mới"
                     value={newLessonName}
                     onChange={(e) => setNewLessonName(e.target.value)}
                     autoFocus
-                    sx={{ flex: "0 0 474px" }}
-                  />
-
-                  {/* Lưu */}
-                  {/*<Button
-                    variant="contained"
-                    size="small"
-                    disabled={!week || !newLessonName.trim()}
-                    onClick={() => {
-                      // 1. Thoát chế độ thêm bài học
-                      setIsAddingLesson(false);
-
-                      // 2. Restore lesson + questions cũ
-                      setLesson(prevLesson);
-                      setQuestions(prevQuestions);
-
-                      // 3. Load lại đề cũ (nếu có)
-                      if (selectedClass && prevLesson) {
-                        fetchExam({
-                          selectedClass,
-                          lessonFullName: prevLesson,
-                        });
-                      }
-
-                      // 4. Reset input
-                      setNewLessonName("");
-                      setWeek("");
+                    sx={{
+                      width: { xs: "100%", md: 474 },
+                      flex: "0 0 auto",   // ❗ giữ cứng 474px
                     }}
-                  >
-                    Lưu
-                  </Button>*/}
+                  />
 
                   {/* Hủy */}
                   <Button
                     variant="outlined"
                     size="small"
+                    sx={{
+                      alignSelf: { xs: "flex-end", md: "center" },
+                      flexShrink: 0,
+                    }}
                     onClick={() => {
                       setIsAddingLesson(false);
                       setNewLessonName("");
@@ -683,6 +664,7 @@ const handleSaveAll = async () => {
                     Hủy
                   </Button>
                 </Stack>
+
               )}
             </FormControl>
 
@@ -693,8 +675,14 @@ const handleSaveAll = async () => {
                 onClick={handleAddLesson}
                 sx={{ height: 40, whiteSpace: "nowrap" }}
               >
-                Thêm bài học
+                <Box sx={{ display: { xs: "inline", md: "none" } }}>
+                  Thêm
+                </Box>
+                <Box sx={{ display: { xs: "none", md: "inline" } }}>
+                  Thêm bài học
+                </Box>
               </Button>
+
             )}
           </Stack>
           </Stack>
