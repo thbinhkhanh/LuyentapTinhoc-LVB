@@ -125,9 +125,19 @@ export default function TracNghiem() {
   
   function getTenBaiRutGon(tenBai) {
     if (!tenBai) return "";
-    const match = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
-    return match ? match[0] : tenBai;
+
+    // Ưu tiên rút gọn Tuần
+    const tuanMatch = tenBai.match(/^Tuần\s+\d+/i);
+    if (tuanMatch) return tuanMatch[0];
+
+    // Sau đó rút gọn Bài
+    const baiMatch = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
+    if (baiMatch) return baiMatch[0];
+
+    // Còn lại giữ nguyên
+    return tenBai;
   }
+
 
   useEffect(() => {
     // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)

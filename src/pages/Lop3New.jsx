@@ -139,9 +139,16 @@ export default function Lop3() {
   }, []);
 
   // ===== LỌC THEO HỌC KÌ =====
-  const lessonsByHocKi = lessons.filter(lesson =>
+  /*const lessonsByHocKi = lessons.filter(lesson =>
     hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9
-  );
+  );*/
+  const lessonsByHocKi = lessons.filter(lesson => {
+    // 🟠 Bài theo tuần → luôn hiển thị
+    if (lesson.title.startsWith("Tuần")) return true;
+
+    // 🔵 Bài thường → chia theo học kì bằng stt
+    return hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9;
+  });
 
   // ===== CLICK CARD =====
   const handleSelect = (title) => {
@@ -208,7 +215,7 @@ export default function Lop3() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
           }}
         >
-          {lessonsByHocKi.map((lesson) => {
+          {/*{lessonsByHocKi.map((lesson) => {
             const ui = lessonUIByStt[lesson.stt] || {};
 
             return (
@@ -220,7 +227,28 @@ export default function Lop3() {
                 onClick={() => handleSelect(lesson.title)}
               />
             );
+          })}*/}
+          {lessonsByHocKi.map((lesson) => {
+            const isWeekLesson = lesson.title.startsWith("Tuần");
+
+            const ui = isWeekLesson
+              ? {
+                  icon: <ClipboardList size={32} color="#f57c00" />, // 🟠 icon cam
+                  color: 'warning',
+                }
+              : lessonUIByStt[lesson.stt] || {};
+
+            return (
+              <LessonCard
+                key={lesson.title}
+                title={lesson.title}
+                icon={ui.icon}
+                color={ui.color || 'primary'}
+                onClick={() => handleSelect(lesson.title)}
+              />
+            );
           })}
+
         </Box>
       </Box>
     </>

@@ -91,7 +91,6 @@ const LessonCard = ({ title, icon, color, onClick }) => {
   );
 };
 
-
 // ================= MAIN =================
 export default function Lop5() {
   const navigate = useNavigate();
@@ -127,10 +126,14 @@ export default function Lop5() {
     fetchLessons();
   }, []);
 
-  // ===== LỌC THEO HỌC KÌ =====
-  const lessonsByHocKi = lessons.filter(lesson =>
-    hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9
-  );
+  const lessonsByHocKi = lessons.filter(lesson => {
+    // 🟢 Bài theo tuần → luôn hiện ở học kì đang chọn
+    if (lesson.title.startsWith("Tuần")) return true;
+
+    // 🔵 Bài thường → chia theo stt
+    return hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9;
+  });
+
 
   // ===== CLICK CARD =====
   const handleSelect = (title) => {
@@ -204,12 +207,19 @@ export default function Lop5() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
           }}
         >
-          {lessonsByHocKi.map((lesson) => {
-            const ui = lessonUIByStt[lesson.stt] || {};
+          {lessonsByHocKi.map((lesson, index) => {
+            const isWeekLesson = lesson.title.startsWith("Tuần");
+
+            const ui = isWeekLesson
+              ? {
+                  icon: <FileText size={32} color="#f57c00" />,
+                  color: 'warning',
+                }
+              : lessonUIByStt[lesson.stt] || {};
 
             return (
               <LessonCard
-                key={lesson.stt}
+                key={lesson.title}
                 title={lesson.title}
                 icon={ui.icon}
                 color={ui.color || 'primary'}
@@ -217,6 +227,7 @@ export default function Lop5() {
               />
             );
           })}
+
         </Box>
       </Box>
     </>

@@ -16,7 +16,6 @@ import {
   InputLabel,
   Card,
   Tooltip,
-  TextField,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -36,9 +35,6 @@ import FileUploadIcon from "@mui/icons-material/FileUpload";
 import QuestionCard from "../Types/questions/QuestionCard";
 import { saveAllQuestions } from "../utils/saveAllQuestions";
 import { useTeacherQuizContext } from "../context/TeacherQuizContext";
-import DeleteIcon from "@mui/icons-material/Delete";
-import OpenExamDialog from "../dialog/OpenExamDialog";
-
 
 export default function TracNghiemGV() {
   const fileInputRef = useRef(null);
@@ -49,19 +45,8 @@ export default function TracNghiemGV() {
   const [lesson, setLesson] = useState(savedConfig.lesson || "");
   const [lessonsFromFirestore, setLessonsFromFirestore] = useState([]);
   const { quizCache, setQuizCache } = useTeacherQuizContext();
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   const classes = ["Lớp 1", "Lớp 2", "Lớp 3", "Lớp 4", "Lớp 5"];
-
-  const [prevLesson, setPrevLesson] = useState("");
-  const [prevQuestions, setPrevQuestions] = useState([]);
-  const [isAddingLesson, setIsAddingLesson] = useState(false);
-  const [newLessonName, setNewLessonName] = useState("");
-  const [week, setWeek] = useState("");
-  const weeks =
-    String(semester) === "1"
-      ? Array.from({ length: 18 }, (_, i) => i + 1)      // HK I: 1 → 18
-      : Array.from({ length: 17 }, (_, i) => i + 19);    // HK II: 19 → 35
 
   const [questions, setQuestions] = useState([]);
 
@@ -253,19 +238,8 @@ export default function TracNghiemGV() {
       const snapshot = await getDocs(collection(db, collectionName));
 
       const lessons = snapshot.docs
-        .map((d) => d.data())
-        .sort((a, b) => {
-          const aIsWeek = a.tenBai?.startsWith("Tuần");
-          const bIsWeek = b.tenBai?.startsWith("Tuần");
-
-          // 👉 bài Tuần luôn xuống cuối
-          if (aIsWeek && !bIsWeek) return 1;
-          if (!aIsWeek && bIsWeek) return -1;
-
-          // 👉 cùng loại thì sort theo stt
-          return (a.stt || 0) - (b.stt || 0);
-        })
-        .map((d) => d.tenBai);
+        .sort((a, b) => (a.data().stt || 0) - (b.data().stt || 0))
+        .map((d) => d.data().tenBai);
 
       setLessonsFromFirestore(lessons);
       return lessons;
@@ -274,7 +248,6 @@ export default function TracNghiemGV() {
       return [];
     }
   };
-
 
   // ===== LOAD LAST OPENED EXAM =====
   useEffect(() => {
@@ -351,7 +324,7 @@ export default function TracNghiemGV() {
     }
   };
 
-  /*const handleSaveAll = () => {
+  const handleSaveAll = () => {
     saveAllQuestions({
       questions,
       db,
@@ -361,74 +334,7 @@ export default function TracNghiemGV() {
       setSnackbar,
     });
     localStorage.setItem("teacherQuiz", JSON.stringify(questions));
-  };*/
-
-  
-const handleSaveAll = async () => {
-  // 🔴 CẢNH BÁO THIẾU DỮ LIỆU KHI THÊM BÀI HỌC
-  if (isAddingLesson && (!week || !newLessonName.trim())) {
-    setSnackbar({
-      open: true,
-      severity: "warning",
-      message: "⚠️ Vui lòng chọn tuần và nhập tên bài học mới",
-    });
-    return; // ⛔ không cho lưu
-  }
-
-  const lessonToSave =
-    isAddingLesson
-      ? `Tuần ${week}. ${newLessonName.trim()}`
-      : lesson;
-
-  // 1. Lưu đề trắc nghiệm
-  await saveAllQuestions({
-    questions,
-    db,
-    selectedClass,
-    semester,
-    lesson: lessonToSave,
-    setSnackbar,
-  });
-
-  localStorage.setItem("teacherQuiz", JSON.stringify(questions));
-
-  // 2. Nếu đang thêm bài học → thêm vào TENBAI_LopX
-  if (isAddingLesson) {
-    const lopNumber = selectedClass.replace("Lớp ", "");
-    const lessonDocRef = doc(db, `TENBAI_Lop${lopNumber}`, lessonToSave);
-
-    await setDoc(lessonDocRef, {
-      tenBai: lessonToSave, // ⭐ bắt buộc để hiển thị
-      createdAt: new Date(),
-    });
-
-    // 3. Reload danh sách bài học
-    await fetchLessonsFromFirestore(selectedClass);
-
-    // 4. Lưu vào CONFIG/config
-    await setDoc(
-      doc(db, "CONFIG", "config"),
-      {
-        selectedClass,
-        lesson: lessonToSave,
-      },
-      { merge: true }
-    );
-
-    // 5. Chọn bài học mới
-    setLesson(lessonToSave);
-
-    // 6. Thoát chế độ thêm
-    setIsAddingLesson(false);
-    setWeek("");
-    setNewLessonName("");
-  }
-};
-
-
-
-
-
+  };
 
   // ===== UPLOAD EXCEL =====
   const handleUploadClick = () => fileInputRef.current?.click();
@@ -475,31 +381,12 @@ const handleSaveAll = async () => {
     }
   };
 
-  const handleAddLesson = () => {
-    // 1. Lưu trạng thái hiện tại
-    setPrevLesson(lesson);
-    setPrevQuestions(questions);
-
-    // 2. Thoát bài học hiện tại
-    setLesson("");
-
-    // 3. Clear toàn bộ câu hỏi, tạo 1 câu mới
-    setQuestions([createEmptyQuestion()]);
-
-    // 4. Vào chế độ thêm bài học
-    setIsAddingLesson(true);
-  };
-
   // ===== RENDER =====
   return (
     <Box sx={{ minHeight: "100vh", pt: 10, px: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
       <Card elevation={4} sx={{ width: "100%", maxWidth: 970, p: 3, borderRadius: 3, position: "relative" }}>
         {/* BUTTONS */}
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ position: "absolute", top: 8, left: 8 }}
-        >
+        <Stack direction="row" spacing={1} sx={{ position: "absolute", top: 8, left: 8 }}>
           <Tooltip title="Lưu đề">
             <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
               <SaveIcon />
@@ -512,16 +399,6 @@ const handleSaveAll = async () => {
             </IconButton>
           </Tooltip>
 
-          {/* 🗑️ ICON XÓA ĐỀ */}
-          <Tooltip title="Xóa đề trắc nghiệm">
-            <IconButton
-              onClick={() => setOpenDeleteDialog(true)}
-              sx={{ color: "#f57c00" }}   // cam cảnh báo
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Tooltip>
-
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -530,7 +407,6 @@ const handleSaveAll = async () => {
             onChange={handleFileChange}
           />
         </Stack>
-
 
         <Typography variant="h5" fontWeight="bold" textAlign="center" sx={{ mt: 3, mb: 2, color: "#1976d2" }}>
           SOẠN ĐỀ TRẮC NGHIỆM
@@ -548,155 +424,53 @@ const handleSaveAll = async () => {
               </Select>
             </FormControl>
 
-          {/* ================= BÀI HỌC ================= */}
-          <Stack direction="row" spacing={2} alignItems="flex-end">
-            {/* Ô Bài học – GIỮ NGUYÊN WIDTH GỐC */}
             <FormControl
               size="small"
-              sx={{ width: { xs: "100%", md: 600 } }}
+              sx={{
+                width: { xs: "100%", md: 600 }, // mobile full, desktop 600
+              }}
               disabled={!selectedClass}
             >
-              {!isAddingLesson ? (
-                <>
-                  <InputLabel>Bài học</InputLabel>
-                  <Select
-                    value={lesson}
-                    label="Bài học"
-                    onChange={async (e) => {
-                      const value = e.target.value;
-
-                      // 1. set state
-                      setLesson(value);
-
-                      // 2. lưu vào CONFIG/config
-                      try {
-                        await setDoc(
-                          doc(db, "CONFIG", "config"),
-                          { lesson: value },
-                          { merge: true }
-                        );
-                      } catch (err) {
-                        console.error("❌ Không lưu lesson vào CONFIG:", err);
-                      }
-
-                      // 3. load đề
-                      fetchExam({
-                        selectedClass,
-                        lessonFullName: value,
-                      });
-                    }}
+              <InputLabel>Bài học</InputLabel>
+              <Select
+                value={lesson}
+                label="Bài học"
+                sx={{
+                  '& .MuiSelect-select': {
+                    whiteSpace: 'normal',
+                    wordBreak: 'break-word',
+                  },
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      maxWidth: '90vw', // không vượt màn hình mobile
+                    },
+                  },
+                }}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setLesson(value);
+                  fetchExam({ selectedClass, lessonFullName: value });
+                }}
+              >
+                <MenuItem value="">Chọn</MenuItem>
+                {lessonsFromFirestore.map((bai) => (
+                  <MenuItem
+                    key={bai}
+                    value={bai}
                     sx={{
-                      "& .MuiSelect-select": {
-                        whiteSpace: "normal",
-                        wordBreak: "break-word",
-                      },
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
+                      lineHeight: 1.4,
                     }}
                   >
-                    <MenuItem value="">Chọn</MenuItem>
-                    {lessonsFromFirestore.map((bai) => (
-                      <MenuItem
-                        key={bai}
-                        value={bai}
-                        sx={{ whiteSpace: "normal", wordBreak: "break-word" }}
-                      >
-                        {bai}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </>
-              ) : (
-                /* ===== THÊM BÀI HỌC – 1 HÀNG (TỔNG = 600px) ===== */
-                <Stack
-                  direction="row"
-                  spacing={2}
-                  alignItems="center"
-                  sx={{ width: "100%" }} // = 600px
-                >
-                  {/* Ô TUẦN – 110px CỐ ĐỊNH (KHÔNG CO) */}
-                  <FormControl
-                    size="small"
-                    sx={{ flex: "0 0 110px" }}
-                  >
-                    <InputLabel>Tuần</InputLabel>
-                    <Select
-                      value={week}
-                      label="Tuần"
-                      onChange={(e) => setWeek(e.target.value)}
-                    >
-                      {weeks.map((w) => (
-                        <MenuItem key={w} value={w}>
-                          Tuần {w}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  {/* Ô TÊN BÀI HỌC MỚI – 474px CỐ ĐỊNH (KHÔNG CO) */}
-                  <TextField
-                    size="small"
-                    label="Tên bài học mới"
-                    value={newLessonName}
-                    onChange={(e) => setNewLessonName(e.target.value)}
-                    autoFocus
-                    sx={{ flex: "0 0 474px" }}
-                  />
-
-                  {/* Lưu */}
-                  {/*<Button
-                    variant="contained"
-                    size="small"
-                    disabled={!week || !newLessonName.trim()}
-                    onClick={() => {
-                      // 1. Thoát chế độ thêm bài học
-                      setIsAddingLesson(false);
-
-                      // 2. Restore lesson + questions cũ
-                      setLesson(prevLesson);
-                      setQuestions(prevQuestions);
-
-                      // 3. Load lại đề cũ (nếu có)
-                      if (selectedClass && prevLesson) {
-                        fetchExam({
-                          selectedClass,
-                          lessonFullName: prevLesson,
-                        });
-                      }
-
-                      // 4. Reset input
-                      setNewLessonName("");
-                      setWeek("");
-                    }}
-                  >
-                    Lưu
-                  </Button>*/}
-
-                  {/* Hủy */}
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      setIsAddingLesson(false);
-                      setNewLessonName("");
-                      setWeek("");
-                    }}
-                  >
-                    Hủy
-                  </Button>
-                </Stack>
-              )}
+                    {bai}
+                  </MenuItem>
+                ))}
+              </Select>
             </FormControl>
 
-            {/* NÚT THÊM BÀI HỌC – GIỐNG NÚT THÊM CÂU HỎI */}
-            {!isAddingLesson && (
-              <Button
-                variant="contained"
-                onClick={handleAddLesson}
-                sx={{ height: 40, whiteSpace: "nowrap" }}
-              >
-                Thêm bài học
-              </Button>
-            )}
-          </Stack>
           </Stack>
         </Paper>
 
@@ -718,11 +492,6 @@ const handleSaveAll = async () => {
             Thêm câu hỏi
           </Button>
         </Stack>
-
-        <OpenExamDialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        />
 
         <Snackbar
           open={snackbar.open}

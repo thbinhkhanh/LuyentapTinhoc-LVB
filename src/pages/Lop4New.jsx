@@ -125,9 +125,16 @@ export default function Lop4() {
   }, []);
 
   // ===== LỌC THEO HỌC KÌ =====
-  const lessonsByHocKi = lessons.filter(lesson =>
+  /*const lessonsByHocKi = lessons.filter(lesson =>
     hocKi === 1 ? lesson.stt <= 10 : lesson.stt > 10
-  );
+  );*/
+  const lessonsByHocKi = lessons.filter(lesson => {
+    // 🟠 Bài theo tuần → luôn hiện ở học kì đang chọn
+    if (lesson.title.startsWith("Tuần")) return true;
+
+    // 🔵 Bài thường → chia theo stt
+    return hocKi === 1 ? lesson.stt <= 10 : lesson.stt > 10;
+  });
 
   // ===== CLICK CARD =====
   const handleSelect = (title) => {
@@ -194,7 +201,7 @@ export default function Lop4() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
           }}
         >
-          {lessonsByHocKi.map((lesson) => {
+          {/*{lessonsByHocKi.map((lesson) => {
             const ui = lessonUIByStt[lesson.stt] || {};
 
             return (
@@ -206,7 +213,28 @@ export default function Lop4() {
                 onClick={() => handleSelect(lesson.title)}
               />
             );
+          })}*/}
+          {lessonsByHocKi.map((lesson) => {
+            const isWeekLesson = lesson.title.startsWith("Tuần");
+
+            const ui = isWeekLesson
+              ? {
+                  icon: <FileText size={32} color="#f57c00" />, // 🟠 icon cam
+                  color: 'warning',
+                }
+              : lessonUIByStt[lesson.stt] || {};
+
+            return (
+              <LessonCard
+                key={lesson.title}
+                title={lesson.title}
+                icon={ui.icon}
+                color={ui.color || 'primary'}
+                onClick={() => handleSelect(lesson.title)}
+              />
+            );
           })}
+
         </Box>
       </Box>
     </>
