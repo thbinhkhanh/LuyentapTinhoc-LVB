@@ -12,238 +12,161 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem, Snackbar, Alert
+  MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import DeleteConfirmDialog from "../dialog/DeleteConfirmDialog";
+import { useNavigate } from "react-router-dom";
 
-const OpenExamDialog = ({ open, onClose }) => {
+const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
-  const [selectedClass, setSelectedClass] = useState("Lớp 5");
+  const [selectedClass, setSelectedClass] = useState("Lớp 4");
+  const navigate = useNavigate();
 
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [docToDelete, setDocToDelete] = useState(null);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  
-  // ===== LOAD DANH SÁCH ĐỀ TUẦN =====
+  // Lấy danh sách đề khi dialog mở và khi lớp thay đổi
   useEffect(() => {
-  if (!open || selectedClass === "Tất cả") {
-    setDocs([]);
-    setSelectedDoc(null);
-    return;
-  }
-
-  const fetchDocs = async () => {
-    setLoading(true);
-    try {
-      const colName = `TRACNGHIEM${selectedClass.replace("Lớp ", "")}`;
-      const snapshot = await getDocs(collection(db, colName));
-
-      const data = snapshot.docs
-        .map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
-        // ✅ sắp xếp theo số xuất hiện trong tên (Bài / Tuần đều OK)
-        .sort((a, b) => {
-          const nA = parseInt(a.id.match(/\d+/)?.[0] || 0);
-          const nB = parseInt(b.id.match(/\d+/)?.[0] || 0);
-          return nA - nB;
-        });
-
-      setDocs(data);
-      setSelectedDoc(null);
-    } catch (err) {
-      console.error("❌ Lỗi load danh sách đề:", err);
+    if (!open || selectedClass === "Tất cả") {
       setDocs([]);
-      setSelectedDoc(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchDocs();
-}, [open, selectedClass]);
-
-
-  // ===== CHỌN XÓA =====
-  const handleDeleteSelected = (docId) => {
-    if (!docId) {
-      alert("⚠️ Vui lòng chọn đề cần xóa!");
+      setSelectedDoc(null); // ✅ reset khi không có docs
       return;
     }
 
-    setDocToDelete(docId);
-    setOpenDeleteDialog(true);
-  };
+    const fetchDocs = async () => {
+      setLoading(true);
+      try {
+        const colName = `TRACNGHIEM${selectedClass.replace("Lớp ", "")}`;
+        const colRef = collection(db, colName);
+        const snapshot = await getDocs(colRef);
+        const newDocs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setDocs(newDocs);
+        setSelectedDoc(null); // ✅ reset mỗi lần load đề mới
+      } catch (err) {
+        console.error("❌ Lỗi load danh sách đề:", err);
+        setDocs([]);
+        setSelectedDoc(null); // ✅ reset khi lỗi
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // ===== XÁC NHẬN XÓA =====
-  const handleConfirmDelete = async () => {
-    if (!docToDelete) return;
+    fetchDocs();
+  }, [open, selectedClass]);
+
+
+  const handleOpenSelected = (docId) => {
+    if (!docId) {
+      alert("⚠️ Vui lòng chọn đề trước khi mở!");
+      return;
+    }
 
     const lopParam = selectedClass.replace("Lớp ", "");
-    const docId = docToDelete;
+    console.log("🔥 Mở đề:", { lopParam, docId }); // ✅ log kiểm tra lớp + bài
 
-    // ✅ 1. XÓA NGAY TRÊN GIAO DIỆN
-    setDocs((prev) => prev.filter((d) => d.id !== docId));
-    setSelectedDoc(null);
-
-    setOpenDeleteDialog(false);
-    setDocToDelete(null);
-
-    // ✅ 2. HIỆN SNACKBAR THÀNH CÔNG
-    setSnackbarOpen(true);
-
-    // ✅ 3. XÓA FIRESTORE (NỀN)
-    try {
-      const tracNghiemRef = doc(db, `TRACNGHIEM${lopParam}`, docId);
-      const tenBaiRef = doc(db, `TENBAI_Lop${lopParam}`, docId);
-
-      await Promise.all([
-        deleteDoc(tracNghiemRef),
-        deleteDoc(tenBaiRef),
-      ]);
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa Firestore:", err);
+    if (onSelectExam) {
+      console.log("✅ Gọi callback parent với:", { lopParam, docId });
+      onSelectExam(lopParam, docId); // Gọi callback parent
+      onClose();
+    } else {
+      // fallback navigate nếu parent không truyền onSelectExam
+      const collectionName = `TRACNGHIEM${lopParam}`;
+      console.log("🚀 Navigate tới:", `/trac-nghiem_test?lop=${lopParam}&bai=${docId}`);
+      navigate(`/trac-nghiem_test?lop=${lopParam}&bai=${docId}`);
+      onClose();
     }
   };
 
+
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        {/* ===== HEADER ===== */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "#1976d2", // nền xanh
-            color: "#fff",         // chữ trắng
-            px: 2,
-            py: 1,                 // giảm chiều cao
-          }}
-        >
-          <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-            🗑️ Xóa đề trắc nghiệm
-          </Typography>
-
-          <IconButton onClick={onClose} sx={{ color: "#fff", p: 0.5 }}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-
-        {/* ===== CHỌN LỚP ===== */}
-        <Box sx={{ px: 2, py: 2 }}>
-          <FormControl size="small" fullWidth>
-            <InputLabel>Lớp</InputLabel>
-            <Select
-              value={selectedClass}
-              label="Lớp"
-              onChange={(e) => setSelectedClass(e.target.value)}
-            >
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <MenuItem key={n} value={`Lớp ${n}`}>
-                  Lớp {n}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-
-        {/* ===== DANH SÁCH ĐỀ ===== */}
-        <DialogContent dividers sx={{ height: 340, px: 2, py: 2 }}>
-          <Box
-            sx={{
-              height: "100%",
-              overflowY: "auto",
-              border: "1px solid #ccc",
-              borderRadius: 2,
-            }}
-          >
-            {loading ? (
-              <Box
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <CircularProgress />
-              </Box>
-            ) : docs.length === 0 ? (
-              <Typography align="center" sx={{ p: 2, color: "gray" }}>
-                Không có đề nào.
-              </Typography>
-            ) : (
-              docs.map((docItem) => (
-                <Stack
-                  key={docItem.id}
-                  direction="row"
-                  alignItems="center"
-                  sx={{
-                    px: 1.5,
-                    py: 0.8,
-                    cursor: "pointer",
-                    borderRadius: 1,
-                    backgroundColor:
-                      selectedDoc === docItem.id ? "#FFEBEE" : "transparent",
-                    "&:hover": { backgroundColor: "#f5f5f5" },
-                  }}
-                  onClick={() => setSelectedDoc(docItem.id)}
-                  onDoubleClick={() => handleDeleteSelected(docItem.id)}
-                >
-                  <Typography>{docItem.id}</Typography>
-                </Stack>
-              ))
-            )}
-          </Box>
-        </DialogContent>
-
-        {/* ===== ACTION ===== */}
-        <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={!selectedDoc}
-            onClick={() => handleDeleteSelected(selectedDoc)}
-          >
-            Xóa đề đã chọn
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ===== DIALOG XÁC NHẬN XÓA ===== */}
-      <DeleteConfirmDialog
-        open={openDeleteDialog}
-        onClose={() => {
-          setOpenDeleteDialog(false);
-          setDocToDelete(null);
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      {/* HEADER */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "linear-gradient(to right, #1976d2, #42a5f5)",
+          color: "#fff",
+          px: 2,
+          py: 2,
         }}
-        onConfirm={handleConfirmDelete}
-      />
-
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={() => setSnackbarOpen(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert
-          onClose={() => setSnackbarOpen(false)}
-          severity="success"
-          variant="filled"
-          sx={{ borderRadius: 2 }}
+        <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+          📂 Danh sách đề
+        </Typography>
+        <IconButton onClick={onClose} sx={{ color: "#fff", p: 0.6 }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* DROPDOWN CHỌN LỚP */}
+      <Box sx={{ px: 1, py: 2 }}>
+        <FormControl size="small" fullWidth>
+          <InputLabel>Lớp</InputLabel>
+          <Select
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            label="Lớp"
+          >
+            <MenuItem value="Tất cả">Tất cả</MenuItem>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <MenuItem key={n} value={`Lớp ${n}`}>
+                Lớp {n}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* CONTENT */}
+      <DialogContent dividers sx={{ height: 340, px: 2, py: 2, bgcolor: "#fff" }}>
+        <Box sx={{ flex: 1, overflowY: "auto", border: "1px solid #ccc", borderRadius: 2 }}>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <CircularProgress />
+            </Box>
+          ) : docs.length === 0 ? (
+            <Typography align="center" sx={{ p: 2, color: "gray" }}>
+              Chọn lớp để xem danh sách đề.
+            </Typography>
+          ) : (
+            docs.map((doc) => (
+              <Stack
+                key={doc.id}
+                direction="row"
+                alignItems="center"
+                sx={{
+                  px: 1,
+                  py: 0.5,
+                  height: 36,
+                  cursor: "pointer",
+                  borderRadius: 1,
+                  backgroundColor: selectedDoc === doc.id ? "#E3F2FD" : "transparent",
+                  "&:hover": { backgroundColor: "#f5f5f5" },
+                }}
+                onClick={() => setSelectedDoc(doc.id)}
+                onDoubleClick={() => handleOpenSelected(doc.id)}
+              >
+                <Typography variant="subtitle1">{doc.id}</Typography>
+              </Stack>
+            ))
+          )}
+        </Box>
+      </DialogContent>
+
+      {/* ACTIONS */}
+      <DialogActions sx={{ px: 3, pb: 2, justifyContent: "center" }}>
+        <Button
+          onClick={() => handleOpenSelected(selectedDoc)}
+          variant="contained"
+          disabled={!selectedDoc}
         >
-          ✅ Đã xóa đề thành công
-        </Alert>
-      </Snackbar>
-    </>
+          Mở đề
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
