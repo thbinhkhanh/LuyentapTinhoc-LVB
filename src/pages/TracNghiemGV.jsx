@@ -572,7 +572,10 @@ const handleSaveAll = async () => {
                       try {
                         await setDoc(
                           doc(db, "CONFIG", "config"),
-                          { lesson: value },
+                          {
+                            selectedClass,
+                            lesson: value,
+                          },
                           { merge: true }
                         );
                       } catch (err) {
