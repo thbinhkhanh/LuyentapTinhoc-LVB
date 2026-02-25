@@ -614,7 +614,11 @@ const studentInfo = {
   );
   //console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
 
-  const currentQuestion = questions[currentIndex] || null;
+  //const currentQuestion = questions[currentIndex] || null;
+  const currentQuestion =
+  Array.isArray(questions) && questions.length > 0
+    ? questions[currentIndex] || null
+    : null;
   const isEmptyQuestion = currentQuestion?.question === "";
 
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
