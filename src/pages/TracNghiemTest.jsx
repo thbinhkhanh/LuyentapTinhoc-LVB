@@ -20,7 +20,7 @@ import {
   Select,
   MenuItem,
   Card,
-  InputLabel, 
+  InputLabel,
 } from "@mui/material";
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
@@ -41,9 +41,6 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
-import { getQuestionStatus } from "../utils/questionStatus";
-import { useTheme, useMediaQuery } from "@mui/material";
-
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import OpenExamDialog from "../dialog/OpenExamDialog";
@@ -51,6 +48,9 @@ import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 
 import ResultDialog from "../dialog/ResultDialog";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
+
+import { getQuestionStatus } from "../utils/questionStatus";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 import { useSearchParams } from "react-router-dom";
 
@@ -65,7 +65,7 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiemTest() {
+export default function TracNghiem_Test() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config } = useConfig();
@@ -102,6 +102,7 @@ export default function TracNghiemTest() {
   const theme = useTheme();
   const isBelow1024 = useMediaQuery("(max-width:1023px)");
   const [showSidebar, setShowSidebar] = useState(true);
+  
 
   const [openResultDialog, setOpenResultDialog] = useState(false);
   const [studentResult, setStudentResult] = useState(null);
@@ -608,17 +609,10 @@ const studentInfo = {
     return typeof q.score === "number" ? q.score : 1;
   };
 
-  const maxScore = (questions || []).reduce(
-    (sum, q) => sum + getQuestionMax(q),
-    0
-  );
+  const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
   //console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
 
-  //const currentQuestion = questions[currentIndex] || null;
-  const currentQuestion =
-  Array.isArray(questions) && questions.length > 0
-    ? questions[currentIndex] || null
-    : null;
+  const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
 
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
@@ -765,8 +759,7 @@ const sidebarConfig = React.useMemo(() => {
   };
 }, [isBelow1024]);
 
-//const hasSidebar = sidebarConfig && questions.length > 0;
-const hasSidebar = sidebarConfig && (questions?.length || 0) > 0;
+const hasSidebar = sidebarConfig && questions.length > 0;
 const isSidebarVisible = hasSidebar && showSidebar;
 
 useEffect(() => {
@@ -827,39 +820,24 @@ return (
       {/* ================= LEFT: CONTENT ================= */}
       <Box
         sx={{
-          flex: 1,          // ✅ chiếm phần còn lại
-          minWidth: 0,      // ✅ chống tràn
-          maxWidth: 1000,   // ✅ giống mẫu
+          flex: 1,
+          minWidth: 0,
+          maxWidth: 1000,
         }}
       >
         <Paper
           sx={{
             p: { xs: 2, sm: 4 },
             borderRadius: 3,
-            minHeight: 650,     // ✅ giống mẫu
+            minHeight: 650,
             display: "flex",
             flexDirection: "column",
             position: "relative",
             backgroundColor: "#fff",
           }}
-        >          
-          {/*<Tooltip title="Mở đề trắc nghiệm">*/}
-          <Tooltip title="Xóa đề trắc nghiệm">
-            <IconButton
-              onClick={handleOpenExamDialog}
-              sx={{
-                position: "absolute", 
-                top: 8,
-                left: 8,
-                color: "#1976d2",
-              }}
-            >
-              <FolderOpenIcon fontSize="medium" />
-            </IconButton>
-          </Tooltip>
-
+        >
           {/* ===== TOGGLE SIDEBAR ===== */}
-          {sidebarConfig && (
+          {hasSidebar && (
             <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"}>
               <IconButton
                 onClick={() => setShowSidebar((prev) => !prev)}
@@ -869,9 +847,7 @@ return (
                   right: 12,
                   bgcolor: "#e3f2fd",
                   border: "1px solid #90caf9",
-                  "&:hover": {
-                    bgcolor: "#bbdefb",
-                  },
+                  "&:hover": { bgcolor: "#bbdefb" },
                   zIndex: 10,
                 }}
               >
@@ -879,6 +855,46 @@ return (
               </IconButton>
             </Tooltip>
           )}
+
+          {/* ===== NÚT MỞ ĐỀ ===== */}
+          <Tooltip title="Xóa đề trắc nghiệm">
+            <IconButton
+              onClick={handleOpenExamDialog}
+              sx={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                color: "#1976d2",
+              }}
+            >
+              <FolderOpenIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* ===== NÚT THOÁT ===== */}
+          {/*<Tooltip title="Thoát trắc nghiệm" arrow>
+            <IconButton
+              onClick={() => {
+                if (notFoundMessage?.includes("❌ Không tìm thấy đề")) {
+                  navigate(-1);
+                } else if (submitted) {
+                  navigate(-1);
+                } else {
+                  setOpenExitConfirm(true);
+                }
+              }}
+              sx={{
+                position: "absolute",
+                top: 12,
+                right: hasSidebar ? 52 : 12, // 👈 né nút sidebar
+                color: "#f44336",
+                bgcolor: "rgba(255,255,255,0.9)",
+                "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Tooltip>*/}
 
           {/* Tiêu đề */}
           <Typography
@@ -956,19 +972,18 @@ return (
             </Stack>
           </Box>  
 
-          {/* Đồng hồ với vị trí cố định */}
+          {/* ===== ĐỒNG HỒ ===== */}
           <Box
             sx={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              //mt: 2,
-              //mb: 0,
-              minHeight: 40, // giữ khoảng trống luôn
+              mt: 0.5,
+              mb: -2,
+              minHeight: 40,
               width: "100%",
             }}
           >
-            {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
             {started && !loading && (
               <Box
                 sx={{
@@ -978,7 +993,7 @@ return (
                   px: 3,
                   py: 0.5,
                   borderRadius: 2,
-                  bgcolor: "#fff", // tùy chỉnh nếu muốn nền
+                  bgcolor: "#fff",
                 }}
               >
                 <AccessTimeIcon sx={{ color: "#d32f2f" }} />
@@ -988,23 +1003,21 @@ return (
               </Box>
             )}
 
-            {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
             <Box
               sx={{
                 width: "100%",
                 height: 1,
-                bgcolor: "#e0e0e0", // màu xám nhạt
-                //mt: 2,
+                bgcolor: "#e0e0e0",
+                mt: 1,
               }}
             />
           </Box>
 
-
-          {/* Loading */}
+          {/* ===== LOADING ===== */}
           {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
               <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
+                <LinearProgress variant="determinate" value={progress} sx={{ height: 3 }} />
                 <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
                   🔄 Đang tải... {progress}%
                 </Typography>
@@ -2167,37 +2180,38 @@ return (
               </Button>
 
               {/* ===== CÂU SAU / NỘP BÀI ===== */}
-              {currentIndex < (questions?.length || 0) - 1 ? (
-  <Button
-    variant="outlined"
-    endIcon={<ArrowForwardIcon />}
-    onClick={handleNext}
-    sx={{
-      width: 150,
-      bgcolor: "#bbdefb",
-      borderRadius: 1,
-      color: "#0d47a1",
-      "&:hover": { bgcolor: "#90caf9" },
-    }}
-  >
-    Câu sau
-  </Button>
-) : (
-  !isSidebarVisible && (
-    <Button
-      variant="contained"
-      color="primary"
-      onClick={handleSubmit}
-      disabled={submitted || isEmptyQuestion}
-      sx={{
-        width: 150,
-        borderRadius: 1,
-      }}
-    >
-      Nộp bài
-    </Button>
-  )
-)}
+              {currentIndex < questions.length - 1 ? (
+                <Button
+                  variant="outlined"
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={handleNext}
+                  sx={{
+                    width: 150,
+                    bgcolor: "#bbdefb",
+                    borderRadius: 1,
+                    color: "#0d47a1",
+                    "&:hover": { bgcolor: "#90caf9" },
+                  }}
+                >
+                  Câu sau
+                </Button>
+              ) : (
+                // ✅ CHỈ HIỆN NỘP BÀI KHI SIDEBAR KHÔNG HIỂN THỊ
+                !isSidebarVisible && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleSubmit}
+                    disabled={submitted || isEmptyQuestion}
+                    sx={{
+                      width: 150,
+                      borderRadius: 1,
+                    }}
+                  >
+                    Nộp bài
+                  </Button>
+                )
+              )}
             </Stack>
           )}
         </Paper>
@@ -2304,7 +2318,7 @@ return (
         </Box>
       )}
     </Box>
-
+    
     {/* Dialog câu chưa làm */}
     <IncompleteAnswersDialog
       open={openAlertDialog}
