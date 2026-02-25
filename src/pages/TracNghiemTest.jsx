@@ -765,7 +765,8 @@ const sidebarConfig = React.useMemo(() => {
   };
 }, [isBelow1024]);
 
-const hasSidebar = sidebarConfig && questions.length > 0;
+//const hasSidebar = sidebarConfig && questions.length > 0;
+const hasSidebar = sidebarConfig && (questions?.length || 0) > 0;
 const isSidebarVisible = hasSidebar && showSidebar;
 
 useEffect(() => {
