@@ -207,7 +207,7 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
                     "&:hover": { backgroundColor: "#f5f5f5" },
                   }}
                   onClick={() => setSelectedDoc(docItem.id)}
-                  //onDoubleClick={() => handleOpenSelected(docItem.id)}
+                  onDoubleClick={() => handleOpenSelected(docItem.id)}
                 >
                   <Typography>{docItem.id}</Typography>
                 </Stack>
@@ -218,13 +218,13 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
 
         {/* ACTION */}
         <DialogActions sx={{ justifyContent: "center", gap: 2, pb: 2 }}>
-          {/*<Button
+          <Button
             variant="contained"
             disabled={!selectedDoc}
             onClick={() => handleOpenSelected(selectedDoc)}
           >
             Mở đề
-          </Button>*/}
+          </Button>
 
           <Button
             variant="contained"
