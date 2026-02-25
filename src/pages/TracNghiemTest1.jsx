@@ -609,12 +609,8 @@ const studentInfo = {
     return typeof q.score === "number" ? q.score : 1;
   };
 
-  //const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
+  const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
   //console.log("🔎 Tổng điểm đề (maxScore):", maxScore);
-  const maxScore = (questions || []).reduce(
-    (sum, q) => sum + getQuestionMax(q),
-    0
-  );
 
   const currentQuestion = questions[currentIndex] || null;
   const isEmptyQuestion = currentQuestion?.question === "";
