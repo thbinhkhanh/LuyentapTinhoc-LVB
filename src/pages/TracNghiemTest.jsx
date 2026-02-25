@@ -2167,38 +2167,37 @@ return (
               </Button>
 
               {/* ===== CÂU SAU / NỘP BÀI ===== */}
-              {currentIndex < questions.length - 1 ? (
-                <Button
-                  variant="outlined"
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={handleNext}
-                  sx={{
-                    width: 150,
-                    bgcolor: "#bbdefb",
-                    borderRadius: 1,
-                    color: "#0d47a1",
-                    "&:hover": { bgcolor: "#90caf9" },
-                  }}
-                >
-                  Câu sau
-                </Button>
-              ) : (
-                // ✅ CHỈ HIỆN NỘP BÀI KHI SIDEBAR KHÔNG HIỂN THỊ
-                !isSidebarVisible && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSubmit}
-                    disabled={submitted || isEmptyQuestion}
-                    sx={{
-                      width: 150,
-                      borderRadius: 1,
-                    }}
-                  >
-                    Nộp bài
-                  </Button>
-                )
-              )}
+              {currentIndex < (questions?.length || 0) - 1 ? (
+  <Button
+    variant="outlined"
+    endIcon={<ArrowForwardIcon />}
+    onClick={handleNext}
+    sx={{
+      width: 150,
+      bgcolor: "#bbdefb",
+      borderRadius: 1,
+      color: "#0d47a1",
+      "&:hover": { bgcolor: "#90caf9" },
+    }}
+  >
+    Câu sau
+  </Button>
+) : (
+  !isSidebarVisible && (
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={handleSubmit}
+      disabled={submitted || isEmptyQuestion}
+      sx={{
+        width: 150,
+        borderRadius: 1,
+      }}
+    >
+      Nộp bài
+    </Button>
+  )
+)}
             </Stack>
           )}
         </Paper>
