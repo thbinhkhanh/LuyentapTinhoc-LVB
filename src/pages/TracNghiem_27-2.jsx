@@ -20,7 +20,6 @@ import {
   Select,
   MenuItem,
   Card,
-  InputLabel,
 } from "@mui/material";
 import { doc, getDoc, getDocs, setDoc, collection, updateDoc } from "firebase/firestore";
 // Thay cho react-beautiful-dnd
@@ -29,30 +28,33 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { db } from "../firebase";
 import { handleSubmitQuiz } from "../utils/submitQuiz";
 import { useConfig } from "../context/ConfigContext";
-import { useQuizContext } from "../context/QuizContext";
+import { useStudentQuizContext } from "../context/StudentQuizContext";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CloseIcon from "@mui/icons-material/Close";
+/*import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';*/
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+
+
+/*import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";*/
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
 import IncompleteAnswersDialog from "../dialog/IncompleteAnswersDialog";
 import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
-import OpenExamDialog from "../dialog/OpenExamDialog";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-
 import ResultDialog from "../dialog/ResultDialog";
+import { useSearchParams } from "react-router-dom";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
-
 import { getQuestionStatus } from "../utils/questionStatus";
 import { useTheme, useMediaQuery } from "@mui/material";
-
-import { useSearchParams } from "react-router-dom";
 
 
 // Hàm shuffle mảng
@@ -65,20 +67,20 @@ function shuffleArray(array) {
   return arr;
 }
 
-export default function TracNghiem_Test() {
+export default function TracNghiem() {
   const location = useLocation();
   const navigate = useNavigate();
   const { config } = useConfig();
 
   // 🔹 Lấy học sinh từ context hoặc fallback localStorage
   const savedStudentInfo = JSON.parse(localStorage.getItem("studentInfo") || "{}");
-  const { quizCache, setQuizCache } = useQuizContext();
-  
+
   const studentId = config?.studentId || savedStudentInfo.studentId || "HS001";
   const fullname = config?.fullname || savedStudentInfo.fullname || "";
   const lop = config?.lop || savedStudentInfo.lop || "";
   const khoi = config?.khoi || savedStudentInfo.khoi || "";
   const mon = config?.mon || savedStudentInfo.mon || "Tin học";
+  const { quizCache, setQuizCache } = useStudentQuizContext();
 
   // 🔹 State quiz
   const [questions, setQuestions] = useState([]);
@@ -99,11 +101,6 @@ export default function TracNghiem_Test() {
   const [timeLeft, setTimeLeft] = useState(config?.timeLimit ? config.timeLimit * 60 : 600);
   const [startTime, setStartTime] = useState(null);
 
-  const theme = useTheme();
-  const isBelow1024 = useMediaQuery("(max-width:1023px)");
-  const [showSidebar, setShowSidebar] = useState(true);
-  
-
   const [openResultDialog, setOpenResultDialog] = useState(false);
   const [studentResult, setStudentResult] = useState(null);
   const [fillBlankStatus, setFillBlankStatus] = useState({});
@@ -117,56 +114,84 @@ export default function TracNghiem_Test() {
   const choXemDapAn = config?.choXemDapAn ?? false;
   const timeLimitMinutes = config?.timeLimit ?? 10;
 
-  const [dropdownClass, setDropdownClass] = useState("");
-  const [dropdownLesson, setDropdownLesson] = useState("");
-  const [lessonsFromFirestore, setLessonsFromFirestore] = useState([]);
+  const theme = useTheme();
+  const isBelow1024 = useMediaQuery("(max-width:1023px)");
+  const [showSidebar, setShowSidebar] = useState(true);
 
-  // Lấy search params từ URL
   const [searchParams] = useSearchParams();
+  const tenBai = decodeURIComponent(searchParams.get("bai") || "");
+  const lopHoc = searchParams.get("lop");
 
-  // Collection và docId từ URL
-  const collectionName = searchParams.get("collection") || ""; 
-  const docId = searchParams.get("bai") || "";                 
-
-  // State lưu tên bài để hiển thị trong Typography
-  const [tenBaiParam, setTenBaiParam] = useState(docId); 
+  const tenBaiRutGon = getTenBaiRutGon(tenBai);
   
+  function getTenBaiRutGon(tenBai) {
+    if (!tenBai) return "";
+
+    // Ưu tiên rút gọn Tuần
+    const tuanMatch = tenBai.match(/^Tuần\s+\d+/i);
+    if (tuanMatch) return tuanMatch[0];
+
+    // Sau đó rút gọn Bài
+    const baiMatch = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
+    if (baiMatch) return baiMatch[0];
+
+    // Còn lại giữ nguyên
+    return tenBai;
+  }
+
+
   useEffect(() => {
-    const bai = decodeURIComponent(searchParams.get("bai") || "");
-    setTenBaiParam(bai);
-  }, [searchParams]);
+    // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)
+    if (lopHoc || tenBai) {
+      const khoi = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
 
-  // Dialog mở đề
-  const [openExamDialog, setOpenExamDialog] = useState(false);
-  const handleOpenExamDialog = () => setOpenExamDialog(true);
-  const handleCloseExamDialog = () => setOpenExamDialog(false);
+      localStorage.setItem(
+        "lastExam",
+        JSON.stringify({
+          khoi,
+          lop: lopHoc,
+          bai: tenBai,
+          bai: tenBaiRutGon, // ✅ dùng rút gọn
+          path: location.pathname + location.search,
+        })
+      );
+    }
 
-  // Lớp và bài được chọn từ dialog
-  const [selectedLop, setSelectedLop] = useState("");
-  const [selectedBai, setSelectedBai] = useState("");
+    // ✅ 1️⃣ VÉ THÔNG HÀNH (TỪ INFO QUAY LẠI)
+    if (location.state?.fromInfo) {
+      navigate(location.pathname + location.search, { replace: true });
+      return;
+    }
+
+    // ✅ 2️⃣ MỞ LINK TRỰC TIẾP → INFO
+    const khoiFinal = lopHoc ? `Khối ${lopHoc[0]}` : undefined;
+
+    navigate("/info", {
+      replace: true,
+      state: {
+        ...(khoiFinal ? { khoi: khoiFinal } : {}),
+        target: location.pathname + location.search,
+        disableKhoi: true,
+      },
+    });
+  }, []);
 
   // Đồng bộ thời gian nếu config thay đổi
   useEffect(() => {
     setTimeLeft(timeLimitMinutes * 60);
   }, [timeLimitMinutes]);
 
-  // Tên học sinh
-const studentName = "Tên học sinh";
+  // Lấy thông tin học sinh tiện dùng
+  const studentInfo = {
+    id: studentId,
+    name: fullname,
+    className: lop,
+    khoi,
+    mon,
+  };
 
-// Lấy số lớp từ selectedLop
-const lopSo = selectedLop ? selectedLop.slice(-1) : "";
-
-// Lớp hiển thị (in hoa)
-const studentClass = lopSo ? `${lopSo}` : "CHƯA CHỌN LỚP";
-
-// Thông tin học sinh
-const studentInfo = {
-  id: "HS_TEST",
-  name: studentName.toUpperCase(),  // in hoa
-  className: studentClass,          // hiển thị "LỚP: 5"
-  khoi: lopSo,                      // số lớp thuần
-  mon: "TIN HỌC",                   // môn in hoa
-};
+  const studentClass = studentInfo.className;
+  const studentName = studentInfo.name;
 
   useEffect(() => {
     if (started && !startTime) {
@@ -217,104 +242,98 @@ const studentInfo = {
   }
 
   useEffect(() => {
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
 
-      const lopHocParam = selectedLop;
-      const tenBaiParam = selectedBai;
-
-      if (!lopHocParam || !tenBaiParam) {
-        setSnackbar({
-          open: true,
-          message: "❌ Thiếu lớp hoặc tên bài học",
-          severity: "error",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const CACHE_KEY = `quiz_${lopHocParam}_${tenBaiParam}`;
-      const collectionName = `TRACNGHIEM${lopHocParam}`;
-      const docId = tenBaiParam;
-
-      // =======================
-      // 🔥 1. LUÔN ĐỌC FIRESTORE TRƯỚC (lấy updatedAt)
-      // =======================
-      const docRef = doc(db, collectionName, docId);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        const msg = `❌ Không tìm thấy đề ${docId}!`;
-        setSnackbar({ open: true, message: msg, severity: "error" });
-        setNotFoundMessage(msg);
-        setLoading(false);
-        return;
-      }
-
-      const data = docSnap.data();
-      const serverUpdatedAt =
-        typeof data.updatedAt === "number"
-          ? data.updatedAt
-          : data.updatedAt?.toMillis?.() ?? 0;
-
-      // =======================
-      // ✅ 2. CONTEXT (VALIDATE)
-      // =======================
-      const cacheFromContext = quizCache?.[CACHE_KEY];
-      if (
-        cacheFromContext &&
-        cacheFromContext.updatedAt === serverUpdatedAt &&
-        Array.isArray(cacheFromContext.questions)
-      ) {
-        //console.log("🧠 LOAD FROM CONTEXT (VALID)");
-
-        setQuestions(cacheFromContext.questions);
-        setQuizClass(cacheFromContext.class || "");
-        setAnswers({});
-        setSubmitted(false);
-        setCurrentIndex(0);
-        setFillBlankStatus({});
-        setProgress(100);
-        setStarted(true);
-        setLoading(false);
-        return;
-      }
-
-      //console.log("🧠 CONTEXT INVALID → SKIP");
-
-      // =======================
-      // ✅ 3. LOCALSTORAGE (VALIDATE)
-      // =======================
-      const cachedLocal = localStorage.getItem(CACHE_KEY);
-      if (cachedLocal) {
-        const parsed = JSON.parse(cachedLocal);
-
-        if (parsed.updatedAt === serverUpdatedAt) {
-          //console.log("💾 LOAD FROM LOCALSTORAGE (VALID)");
-
-          setQuestions(parsed.questions);
-          setQuizClass(parsed.class || "");
-          setAnswers({});
-          setSubmitted(false);
-          setCurrentIndex(0);
-          setFillBlankStatus({});
-          setProgress(100);
-          setStarted(true);
-
-          // ⚠️ SYNC LẠI CONTEXT DẠNG MAP (KHÔNG GHI ĐÈ)
-          setQuizCache(prev => ({
-            ...prev,
-            [CACHE_KEY]: parsed,
-          }));
-
+        // =======================
+        // ❌ CHẶN LỖI NGAY ĐẦU
+        // =======================
+        if (!lopHoc || !tenBai) {
+          setSnackbar({
+            open: true,
+            message: "❌ Thiếu lớp hoặc tên bài học",
+            severity: "error",
+          });
           setLoading(false);
           return;
-        } else {
-          //console.log("🗑 LOCALSTORAGE INVALID → REMOVE");
-          localStorage.removeItem(CACHE_KEY);
         }
-      }
+
+        const CACHE_KEY = `quiz_${lopHoc}_${tenBai}`;
+        const collectionName = `TRACNGHIEM${lopHoc}`;
+        const docId = tenBai;
+
+        // =======================
+        // 🔥 1. LUÔN ĐỌC FIRESTORE TRƯỚC (LẤY updatedAt)
+        // =======================
+        const docRef = doc(db, collectionName, docId);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+          const msg = "❌ Không tìm thấy đề trắc nghiệm!";
+          setSnackbar({ open: true, message: msg, severity: "error" });
+          setNotFoundMessage(msg);
+          setLoading(false);
+          return;
+        }
+
+        const data = docSnap.data();
+        const serverUpdatedAt =
+          typeof data.updatedAt === "number"
+            ? data.updatedAt
+            : data.updatedAt?.toMillis?.() ?? 0;
+
+        // =======================
+        // ✅ 2. CONTEXT (VALIDATE)
+        // =======================
+        const cacheFromContext = quizCache?.[CACHE_KEY];
+
+        if (
+          cacheFromContext &&
+          cacheFromContext.updatedAt === serverUpdatedAt &&
+          Array.isArray(cacheFromContext.questions)
+        ) {
+          //console.log("🧠 LOAD FROM CONTEXT (VALID)", CACHE_KEY);
+
+          setQuestions(cacheFromContext.questions);
+          setQuizClass(cacheFromContext.class || "");
+          setStarted(true);
+          setProgress(100);
+          setLoading(false);
+          return;
+        }
+
+        // =======================
+        // ✅ 3. LOCALSTORAGE (VALIDATE)
+        // =======================
+        const stored = localStorage.getItem(CACHE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+
+          if (
+            parsed.updatedAt === serverUpdatedAt &&
+            Array.isArray(parsed.questions)
+          ) {
+            //console.log("💾 LOAD FROM LOCALSTORAGE (VALID)", CACHE_KEY);
+
+            setQuestions(parsed.questions);
+            setQuizClass(parsed.class || "");
+            setStarted(true);
+            setProgress(100);
+
+            // ✅ sync lại context (LƯU NHIỀU ĐỀ)
+            setQuizCache(prev => ({
+              ...prev,
+              [CACHE_KEY]: parsed,
+            }));
+
+            setLoading(false);
+            return;
+          } else {
+            // ❌ đề cũ → xoá
+            localStorage.removeItem(CACHE_KEY);
+          }
+        }
 
         // --- Xử lý câu hỏi ---
         let saved = Array.isArray(data.questions) ? data.questions : [];
@@ -333,38 +352,27 @@ const studentInfo = {
             const pairs = Array.isArray(q.pairs) ? q.pairs : [];
             if (pairs.length === 0) return null;
 
-            // Chuẩn hóa cột trái
+            //console.log("🔥 RAW MATCHING PAIRS:", pairs);
+
             const leftOptions = pairs.map((p, idx) => {
-              // CASE 1: leftImage
-              if (p.leftImage?.url) {
+              // --- CASE 1: editor lưu { leftImage: { url, name } } ---
+              if (p.leftImage && p.leftImage.url) {
+                //console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
                 return { type: "image", url: p.leftImage.url, name: p.leftImage.name || `img-${idx}` };
               }
 
-              // CASE 2: leftIconImage + optional text
-              if (p.leftIconImage?.url) {
-                return {
-                  type: "icon",
-                  url: p.leftIconImage.url,
-                  name: p.leftIconImage.name || `icon-${idx}`,
-                  text: p.left ?? "", // giữ text nếu có
-                };
-              }
-
-              // CASE 3: left là URL string
+              // --- CASE 2: left là chuỗi URL ---
               if (typeof p.left === "string" && /^https?:\/\//i.test(p.left.trim())) {
+                //console.log(`🔥 left[${idx}] = URL`, p.left);
                 return { type: "image", url: p.left.trim(), name: `img-${idx}` };
               }
 
-              // CASE 4: left là text bình thường
-              if (typeof p.left === "string") {
-                return { type: "text", text: p.left };
-              }
-
-              // fallback: trả về text rỗng
-              return { type: "text", text: "" };
+              // --- CASE 3: để nguyên dạng text ---
+              //console.log(`🔥 left[${idx}] = text`, p.left);
+              return p.left ?? "";
             });
 
-            // Cột phải: đảo nếu cần
+            // cột phải: đảo cho đến khi khác ít nhất 1 phần tử
             const rightOptionsOriginal = pairs.map((p, idx) => ({ opt: p.right, idx }));
             const processedRightOptions =
               q.sortType === "shuffle"
@@ -384,7 +392,7 @@ const studentInfo = {
               type,
               question: questionText,
               image: q.image ?? null,
-              leftOptions, // chuẩn hóa: type = "image" | "icon" | "text"
+              leftOptions,
               rightOptions: processedRightOptions.map(i => i.opt),
               correct: newCorrect,
               score: q.score ?? 1,
@@ -524,6 +532,7 @@ const studentInfo = {
           return null;
         }).filter(Boolean);
 
+
         // --- Lọc câu hợp lệ bao gồm fillblank ---
         const validQuestions = loadedQuestions.filter(q => {
           if (q.type === "matching") return q.question.trim() !== "" && q.leftOptions.length > 0 && q.rightOptions.length > 0;
@@ -535,26 +544,31 @@ const studentInfo = {
         });
 
         setQuestions(validQuestions);
-        setProgress(100);
-        setStarted(true);
-
         // =======================
-        // ✅ LƯU CACHE SAU FETCH
+        // ✅ LƯU CONTEXT + STORAGE
         // =======================
         const cachePayload = {
-          key: `quiz_${lopHocParam}_${tenBaiParam}`,
-          questions: validQuestions,
+          key: CACHE_KEY,
+          lopHoc,
+          tenBai,
           class: data.class || "",
-          updatedAt: serverUpdatedAt, // ⭐ BẮT BUỘC
+          questions: validQuestions,
+
+          updatedAt: serverUpdatedAt, // ✅ BẮT BUỘC
+          savedAt: Date.now(),        // (tuỳ, để debug)
         };
+
 
         setQuizCache(prev => ({
           ...prev,
-          [CACHE_KEY]: cachePayload,
+          [CACHE_KEY]: cachePayload
         }));
 
-        localStorage.setItem(cachePayload.key, JSON.stringify(cachePayload));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
 
+
+        setProgress(100);
+        setStarted(true);
 
         setAnswers(prev => {
           const next = { ...prev };
@@ -568,7 +582,6 @@ const studentInfo = {
           return next;
         });
 
-
       } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
         setQuestions([]);
@@ -578,7 +591,7 @@ const studentInfo = {
     };
 
     fetchQuestions();
-  }, [selectedLop, selectedBai]);
+  }, [tenBai, lopHoc]);
 
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
@@ -588,6 +601,21 @@ const studentInfo = {
       .filter(word => word.trim() !== "")
       .map(word => word[0].toUpperCase() + word.slice(1))
       .join(" ");
+
+  // Sử dụng:
+  const hoVaTen = capitalizeName(studentName);
+
+  /*function mapHocKyToDocKey(loaiKT) {
+    switch (loaiKT) {
+      case "Giữa kỳ I": return "GKI";
+      case "Cuối kỳ I": return "CKI";
+      case "Giữa kỳ II": return "GKII";
+      case "Cả năm": return "CN";
+      default:
+        console.warn("❌ Loại kiểm tra không xác định:", loaiKT);
+        return "UNKNOWN";
+    }
+  }*/
 
   const getQuestionMax = (q) => {
     // Nếu có scoreTotal thì dùng (tổng sẵn của câu)
@@ -622,6 +650,7 @@ const studentInfo = {
     handleSubmitQuiz({
       studentName,
       studentClass,
+      tenBaiRutGon,
       studentId,
       studentInfo,
       studentResult,
@@ -640,7 +669,6 @@ const studentInfo = {
       getQuestionMax,
       capitalizeName,
       formatTime,
-      isTestMode: true,
     });
 
   const handleNext = () => currentIndex < questions.length - 1 && setCurrentIndex(currentIndex + 1);
@@ -655,12 +683,18 @@ const studentInfo = {
     return Math.ceil(raw);
   };
 
+/*useEffect(() => {
+    if (config.timeLimit) setTimeLeft(config.timeLimit * 60);
+  }, [config.timeLimit]);*/
+
   function reorder(list, startIndex, endIndex) {
     const result = Array.from(list);
     const [removed] = result.splice(startIndex, 1);
     result.splice(endIndex, 0, removed);
     return result;
   }
+
+  // Giả sử bạn đang dùng useState để lưu đáp án
 
 // Single: luôn lưu là số index
 const handleSingleSelect = (questionId, optionIndex) => {
@@ -762,39 +796,6 @@ const sidebarConfig = React.useMemo(() => {
 const hasSidebar = sidebarConfig && questions.length > 0;
 const isSidebarVisible = hasSidebar && showSidebar;
 
-useEffect(() => {
-  const fetchLessons = async () => {
-    if (!dropdownClass) return;
-
-    try {
-      const lopSo = dropdownClass.replace("Lớp ", "");
-      const collectionName = `TRACNGHIEM${lopSo}`;
-
-      const snapshot = await getDocs(collection(db, collectionName));
-
-      const lessonNames = snapshot.docs.map(doc => doc.id);
-
-      setLessonsFromFirestore(lessonNames);
-    } catch (err) {
-      console.error("Lỗi load bài:", err);
-      setLessonsFromFirestore([]);
-    }
-  };
-
-  fetchLessons();
-}, [dropdownClass]);
-
-const handleOpenExamFromDropdown = (lop, bai) => {
-  // chỉ set state
-  setSelectedLop(lop);
-  setSelectedBai(bai);
-
-  // reset trạng thái làm bài
-  setAnswers({});
-  setCurrentIndex(0);
-  setSubmitted(false);
-};
-
 return (
   <Box
     id="quiz-container"
@@ -820,24 +821,25 @@ return (
       {/* ================= LEFT: CONTENT ================= */}
       <Box
         sx={{
-          flex: 1,
-          minWidth: 0,
-          maxWidth: 1000,
+          flex: 1,          // ✅ chiếm phần còn lại
+          minWidth: 0,      // ✅ chống tràn
+          maxWidth: 1000,   // ✅ giống mẫu
         }}
       >
         <Paper
           sx={{
             p: { xs: 2, sm: 4 },
             borderRadius: 3,
-            minHeight: 650,
+            minHeight: 650,     // ✅ giống mẫu
             display: "flex",
             flexDirection: "column",
             position: "relative",
             backgroundColor: "#fff",
           }}
         >
+
           {/* ===== TOGGLE SIDEBAR ===== */}
-          {hasSidebar && (
+          {sidebarConfig && (
             <Tooltip title={showSidebar ? "Thu gọn bảng câu hỏi" : "Mở bảng câu hỏi"}>
               <IconButton
                 onClick={() => setShowSidebar((prev) => !prev)}
@@ -847,7 +849,9 @@ return (
                   right: 12,
                   bgcolor: "#e3f2fd",
                   border: "1px solid #90caf9",
-                  "&:hover": { bgcolor: "#bbdefb" },
+                  "&:hover": {
+                    bgcolor: "#bbdefb",
+                  },
                   zIndex: 10,
                 }}
               >
@@ -856,123 +860,16 @@ return (
             </Tooltip>
           )}
 
-          {/* ===== NÚT MỞ ĐỀ ===== */}
-          <Tooltip title="Xóa đề trắc nghiệm">
-            <IconButton
-              onClick={handleOpenExamDialog}
-              sx={{
-                position: "absolute",
-                top: 12,
-                left: 12,
-                color: "#1976d2",
-              }}
-            >
-              <FolderOpenIcon />
-            </IconButton>
-          </Tooltip>
-
-          {/* ===== NÚT THOÁT ===== */}
-          {/*<Tooltip title="Thoát trắc nghiệm" arrow>
-            <IconButton
-              onClick={() => {
-                if (notFoundMessage?.includes("❌ Không tìm thấy đề")) {
-                  navigate(-1);
-                } else if (submitted) {
-                  navigate(-1);
-                } else {
-                  setOpenExitConfirm(true);
-                }
-              }}
-              sx={{
-                position: "absolute",
-                top: 12,
-                right: hasSidebar ? 52 : 12, // 👈 né nút sidebar
-                color: "#f44336",
-                bgcolor: "rgba(255,255,255,0.9)",
-                "&:hover": { bgcolor: "rgba(255,67,54,0.2)" },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Tooltip>*/}
-
           {/* Tiêu đề */}
           <Typography
             variant="h6"
             fontWeight="bold"
-            sx={{ color: "#1976d2", mt: { xs: 4, sm: -1 }, mb: { xs: 1, sm: 1 }, textAlign: "center" }}
+            sx={{ color: "#1976d2", mt: { xs: 4, sm: -1 }, mb: { xs: 1, sm: -1 }, textAlign: "center" }}
           >
-            TEST ĐỀ TRẮC NGHIỆM
+            {tenBai ? tenBai.toUpperCase() : "TRẮC NGHIỆM"}
           </Typography>
-
-          {/* ===== DROPDOWN CHỌN LỚP + BÀI ===== */}
-          <Box sx={{ mt: 2, mb: 2 }}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={2}
-              justifyContent="center"
-            >
-              {/* ===== Chọn lớp ===== */}
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel>Lớp</InputLabel>
-                <Select
-                  value={dropdownClass}
-                  label="Lớp"
-                  onChange={(e) => {
-                    setDropdownClass(e.target.value);
-                    setDropdownLesson("");
-                    setLessonsFromFirestore([]);
-                  }}
-                >
-                  <MenuItem value="">Chọn</MenuItem>
-                  {[3, 4, 5].map((n) => (
-                    <MenuItem key={n} value={`Lớp ${n}`}>
-                      Lớp {n}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* ===== Chọn bài học ===== */}
-              <FormControl
-                size="small"
-                sx={{ minWidth: 260 }}
-                disabled={!dropdownClass}
-              >
-                <InputLabel>Bài học</InputLabel>
-                <Select
-                  value={dropdownLesson}
-                  label="Bài học"
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setDropdownLesson(value);
-
-                    if (!value) return;
-
-                    const lopSo = dropdownClass.replace("Lớp ", "");
-
-                    handleOpenExamFromDropdown(lopSo, value);
-                  }}
-                  sx={{
-                    '& .MuiSelect-select': {
-                      whiteSpace: 'normal',
-                      wordBreak: 'break-word',
-                    },
-                  }}
-                >
-                  <MenuItem value="">Chọn</MenuItem>
-
-                  {lessonsFromFirestore.map((bai) => (
-                    <MenuItem key={bai} value={bai}>
-                      {bai}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Stack>
-          </Box>  
-
-          {/* ===== ĐỒNG HỒ ===== */}
+    
+          {/* Đồng hồ với vị trí cố định */}
           <Box
             sx={{
               display: "flex",
@@ -980,11 +877,12 @@ return (
               alignItems: "center",
               mt: 0.5,
               mb: -2,
-              minHeight: 40,
+              minHeight: 10, // giữ khoảng trống luôn
               width: "100%",
             }}
           >
-            {started && !loading && (
+            {/* Nội dung đồng hồ chỉ hiển thị khi started && !loading */}
+            {started && !loading && config.showTimer && (
               <Box
                 sx={{
                   display: "flex",
@@ -997,34 +895,39 @@ return (
                 }}
               >
                 <AccessTimeIcon sx={{ color: "#d32f2f" }} />
-                <Typography variant="h6" sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: "bold", color: "#d32f2f" }}
+                >
                   {formatTime(timeLeft)}
                 </Typography>
               </Box>
             )}
-
+    
+    
+            {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
             <Box
               sx={{
                 width: "100%",
                 height: 1,
-                bgcolor: "#e0e0e0",
-                mt: 1,
+                bgcolor: "#e0e0e0", // màu xám nhạt
+                mt: 5,
               }}
             />
           </Box>
-
-          {/* ===== LOADING ===== */}
+    
+          {/* Loading */}
           {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 1, width: "100%" }}>
               <Box sx={{ width: { xs: "60%", sm: "30%" } }}>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 3 }} />
+                <LinearProgress variant="determinate" value={progress} sx={{ height: 3, borderRadius: 3 }} />
                 <Typography variant="body2" sx={{ mt: 0.5, textAlign: "center" }}>
                   🔄 Đang tải... {progress}%
                 </Typography>
               </Box>
             </Box>
           )}
-      
+
           {/* KHU VỰC HIỂN THỊ CÂU HỎI */}
           {!loading && currentQuestion && (
             <Box key={currentQuestion.id || currentIndex}>
@@ -1037,7 +940,7 @@ return (
                   }}
                 />
               </Typography>
-
+    
               {currentQuestion.image && (
                 <Box sx={{ width: "100%", textAlign: "center", mb: 2 }}>
                   <img
@@ -1052,7 +955,7 @@ return (
                   />
                 </Box>
               )}
-
+    
               {/* SORT */}
               {currentQuestion.type === "sort" && (
                 <Box sx={{ mt: 0 }}>
@@ -1085,21 +988,21 @@ return (
                       </Box>
                     </Box>
                   )}
-
+    
                   <DragDropContext
                     onDragEnd={(result) => {
                       if (!result.destination || submitted || !started) return;
-
+    
                       const currentOrder =
                         answers[currentQuestion.id] ??
                         currentQuestion.options.map((_, idx) => idx);
-
+    
                       const newOrder = reorder(
                         currentOrder,
                         result.source.index,
                         result.destination.index
                       );
-
+    
                       setAnswers((prev) => ({ ...prev, [currentQuestion.id]: newOrder }));
                     }}
                   >
@@ -1108,7 +1011,7 @@ return (
                         const orderIdx =
                           answers[currentQuestion.id] ??
                           currentQuestion.options.map((_, idx) => idx);
-
+    
                         return (
                           <Stack {...provided.droppableProps} ref={provided.innerRef} spacing={2}>
                             {orderIdx.map((optIdx, pos) => {
@@ -1117,14 +1020,14 @@ return (
                                 typeof optionData === "string" ? optionData : optionData.text ?? "";
                               const optionImage =
                                 typeof optionData === "object" ? optionData.image ?? null : null;
-
+    
                               // ✅ So sánh với correctTexts thay vì correct index
                               const correctData = currentQuestion.correctTexts[pos];
                               const isCorrectPos =
                                 submitted &&
                                 choXemDapAn &&
                                 normalizeValue(optionData) === normalizeValue(correctData);
-
+    
                               return (
                                 <Draggable
                                   key={optIdx}
@@ -1175,7 +1078,7 @@ return (
                                           }}
                                         />
                                       )}
-
+    
                                       <Typography
                                         variant="body1"
                                         fontWeight="400"
@@ -1203,7 +1106,7 @@ return (
                   </DragDropContext>
                 </Box>
               )}
-
+    
               {/* MATCH */}
               {currentQuestion.type === "matching" && (
                 <Box sx={{ width: "100%" }}>
@@ -1239,26 +1142,26 @@ return (
                           }}
                           onClick={() => setZoomImage(currentQuestion.questionImage)}
                         />
-
+    
                       </Box>
                     </Box>
                   )}
-
+    
                   {/* ================= MATCHING ================= */}
                   <DragDropContext
                     onDragEnd={(result) => {
                       if (!result.destination || submitted || !started) return;
-
+    
                       const currentOrder =
                         answers[currentQuestion.id] ??
                         currentQuestion.pairs.map((_, idx) => idx);
-
+    
                       const newOrder = reorder(
                         currentOrder,
                         result.source.index,
                         result.destination.index
                       );
-
+    
                       setAnswers((prev) => ({
                         ...prev,
                         [currentQuestion.id]: newOrder,
@@ -1270,20 +1173,20 @@ return (
                         const optionText = pair.left || "";
                         const optionImage =
                           pair.leftImage?.url || pair.leftIconImage?.url || null;
-
+    
                         const userOrder =
                           answers[currentQuestion.id] ??
                           currentQuestion.rightOptions.map((_, idx) => idx);
-
+    
                         const rightIdx = userOrder[i];
                         const rightVal = currentQuestion.rightOptions[rightIdx];
                         const rightText = typeof rightVal === "string" ? rightVal : "";
                         const rightImage =
                           typeof rightVal === "object" ? rightVal?.url : null;
-
+    
                         const isCorrect =
                           submitted && userOrder[i] === currentQuestion.correct[i];
-
+    
                         return (
                           <Stack
                             key={i}
@@ -1295,7 +1198,7 @@ return (
                             {/* ================= LEFT ================= */}
                             <Paper
                               sx={{
-                                flexGrow: ratio.left,
+                                  flexGrow: ratio.left,
                                 flexBasis: 0,
                                 display: "flex",
                                 alignItems: "center",
@@ -1333,7 +1236,7 @@ return (
                                   />
                                 </Box>
                               )}
-
+    
                               {optionText && (
                                 <Typography
                                   component="div"
@@ -1349,7 +1252,7 @@ return (
                                 />
                               )}
                             </Paper>
-
+    
                             {/* ================= RIGHT ================= */}
                             <Droppable droppableId={`right-${i}`} direction="vertical">
                               {(provided) => (
@@ -1420,7 +1323,7 @@ return (
                                             />
                                           </Box>
                                         )}
-
+    
                                         {rightText && (
                                           <Typography
                                             component="div"
@@ -1451,7 +1354,7 @@ return (
                   </DragDropContext>
                 </Box>
               )}
-
+    
               {/* 1. Single */}
               {currentQuestion.type === "single" && (
                 <Stack spacing={2}>
@@ -1490,19 +1393,19 @@ return (
                   )}
                   {currentQuestion.displayOrder.map((optIdx) => {
                     const selected = answers[currentQuestion.id] === optIdx;
-
+    
                     const correctArray = Array.isArray(currentQuestion.correct)
                       ? currentQuestion.correct
                       : [currentQuestion.correct];
-
+    
                     const isCorrect = submitted && correctArray.includes(optIdx);
                     const isWrong = submitted && selected && !correctArray.includes(optIdx);
-
+    
                     const handleSelect = () => {
                       if (submitted || !started) return;
                       handleSingleSelect(currentQuestion.id, optIdx);
                     };
-
+    
                     // Lấy dữ liệu option
                     const optionData = currentQuestion.options[optIdx];
                     const optionText =
@@ -1515,7 +1418,7 @@ return (
                       typeof optionData === "object" && optionData.image
                         ? optionData.image
                         : null;
-
+    
                     return (
                       <Paper
                         key={optIdx}
@@ -1548,7 +1451,7 @@ return (
                       >
                         {/* Radio button */}
                         <Radio checked={selected} onChange={handleSelect} sx={{ mr: 1 }} />
-
+    
                         {/* Hình option nếu có */}
                         {optionImage && (
                           <Box
@@ -1564,7 +1467,7 @@ return (
                             }}
                           />
                         )}
-
+    
                         {/* Text option */}
                         <Typography
                           variant="body1"
@@ -1584,7 +1487,7 @@ return (
                   })}
                 </Stack>
               )}
-
+    
               {/* 2. Multiple */}
               {currentQuestion.type === "multiple" && (
                 <Stack spacing={2}>
@@ -1621,25 +1524,25 @@ return (
                       </Box>
                     </Box>
                   )}
-
+    
                   {currentQuestion.displayOrder.map((optIdx) => {
                     const optionData = currentQuestion.options[optIdx];
                     const optionText = optionData.text ?? "";
                     const optionImage = optionData.image ?? null;
-
+    
                     const userAns = answers[currentQuestion.id] || [];
                     const checked = userAns.includes(optIdx);
-
+    
                     const isCorrect =
                       submitted && currentQuestion.correct.includes(optIdx);
                     const isWrong =
                       submitted && checked && !currentQuestion.correct.includes(optIdx);
-
+    
                     const handleSelect = () => {
                       if (submitted || !started) return;
                       handleMultipleSelect(currentQuestion.id, optIdx, !checked);
                     };
-
+    
                     return (
                       <Paper
                         key={optIdx}
@@ -1676,7 +1579,7 @@ return (
                           onChange={handleSelect}
                           sx={{ mr: 1 }}
                         />
-
+    
                         {/* Hình option nếu có */}
                         {optionImage && (
                           <Box
@@ -1692,7 +1595,7 @@ return (
                             }}
                           />
                         )}
-
+    
                         {/* Text option */}
                         <Typography
                           variant="body1"
@@ -1712,7 +1615,7 @@ return (
                   })}
                 </Stack>
               )}
-
+    
               {/* TRUE / FALSE */}
               {currentQuestion.type === "truefalse" && (
                 <Stack spacing={2}>
@@ -1750,26 +1653,26 @@ return (
                       </Box>
                     </Box>
                   )}
-
+    
                   
                   {currentQuestion.options.map((opt, i) => {
                     const userAns = answers[currentQuestion.id] || [];
                     const selected = userAns[i] ?? "";
-
+    
                     const originalIdx = Array.isArray(currentQuestion.initialOrder)
                       ? currentQuestion.initialOrder[i]
                       : i;
-
+    
                     const correctArray = Array.isArray(currentQuestion.correct)
                       ? currentQuestion.correct
                       : [];
-
+    
                     const correctVal = correctArray[originalIdx] ?? "";
-
+    
                     const showResult = submitted && choXemDapAn;
                     const isCorrect = showResult && selected === correctVal;
                     const isWrong   = showResult && selected !== "" && selected !== correctVal;
-
+    
                     return (
                       <Paper
                         key={i}
@@ -1807,7 +1710,7 @@ return (
                           }}
                           dangerouslySetInnerHTML={{ __html: opt }}
                         />
-
+    
                         {/* Dropdown nhỏ gọn */}
                         <FormControl size="small" sx={{ width: 90 }}>
                           <Select
@@ -1844,7 +1747,7 @@ return (
                   })}
                 </Stack>
               )}
-
+    
               {/* IMAGE MULTIPLE */}
               {currentQuestion.type === "image" && (
                 <Stack
@@ -1858,17 +1761,17 @@ return (
                   {currentQuestion.displayOrder.map((optIdx) => {
                     const userAns = answers[currentQuestion.id] || [];
                     const checked = userAns.includes(optIdx);
-
+    
                     const isCorrect = submitted && currentQuestion.correct.includes(optIdx);
                     const isWrong = submitted && checked && !currentQuestion.correct.includes(optIdx);
-
+    
                     // ký hiệu đáp án đúng/sai
                     const bullet = submitted
                       ? isCorrect
                         ? "[●]" // hình đúng
                         : "( )" // hình sai
                       : "( )"; // chưa nộp thì tất cả là ( )
-
+    
                     return (
                       <Paper
                         key={optIdx}
@@ -1881,7 +1784,7 @@ return (
                           p: 1,
                           border: "1px solid #90caf9",
                           cursor: submitted || !started ? "default" : "pointer",
-
+    
                           width: { xs: 150, sm: 150 },
                           height: { xs: "auto", sm: 180 },
                           boxSizing: "border-box",
@@ -1895,7 +1798,7 @@ return (
                         {/*<div style={{ marginBottom: 4, fontSize: 14 }}>
                           {bullet} Hình {optIdx + 1}
                         </div>*/}
-
+    
                         {/* hình ảnh */}
                         <img
                           src={currentQuestion.options[optIdx]}
@@ -1910,7 +1813,7 @@ return (
                             e.currentTarget.style.display = "none";
                           }}
                         />
-
+    
                         {/* checkbox để chọn */}
                         <Checkbox
                           checked={checked}
@@ -1942,7 +1845,7 @@ return (
                   })}
                 </Stack>
               )}
-
+    
               {/* FILLBLANK */}
               {currentQuestion.type === "fillblank" && (
                 <DragDropContext onDragEnd={handleDragEnd}>
@@ -1977,7 +1880,7 @@ return (
                         </Box>
                       </Box>
                     )}
-
+    
                     {/* ======================= CÂU HỎI + CHỖ TRỐNG ======================= */}
                     <Box
                       sx={{
@@ -2003,7 +1906,7 @@ return (
                             }}
                             dangerouslySetInnerHTML={{ __html: part }}
                           />
-
+    
                           {/* Chỗ trống */}
                           {idx < currentQuestion.option.split("[...]").length - 1 && (
                             <Droppable droppableId={`blank-${idx}`} direction="horizontal">
@@ -2016,7 +1919,7 @@ return (
                                       ? "green"
                                       : "red"
                                     : "#000";
-
+    
                                 return (
                                   <Box
                                     component="span"
@@ -2077,13 +1980,13 @@ return (
                         </span>
                       ))}
                     </Box>
-
+    
                     {/* ======================= KHU VỰC THẺ TỪ ======================= */}
                     <Box sx={{ mt: 2, textAlign: "left" }}>
                       <Typography sx={{ mb: 1, fontWeight: "bold", fontSize: "1.1rem", fontFamily: "Roboto, Arial, sans-serif" }}>
                         Các từ cần điền:
                       </Typography>
-
+    
                       <Droppable droppableId="words" direction="horizontal">
                         {(provided) => (
                           <Box
@@ -2133,7 +2036,7 @@ return (
                                   )}
                                 </Draggable>
                               ))}
-
+    
                             {provided.placeholder}
                           </Box>
                         )}
@@ -2305,7 +2208,7 @@ return (
               </Button>
             )}
 
-            {/*<Button
+            <Button
               fullWidth
               variant="outlined"
               color="error"
@@ -2313,7 +2216,7 @@ return (
               onClick={() => setOpenExitConfirm(true)}
             >
               Thoát
-            </Button>*/}
+            </Button>
           </Card>
         </Box>
       )}
@@ -2344,28 +2247,29 @@ return (
       convertPercentToScore={convertPercentToScore}
     />
 
-    <OpenExamDialog
-      open={openExamDialog}
-      onClose={() => setOpenExamDialog(false)}
-      onSelectExam={(lop, bai) => {
-        //console.log("🔥 Parent nhận:", { lop, bai });
-
-        // Chỉ update state để useEffect chạy
-        setSelectedLop(lop);
-        setSelectedBai(bai);
-
-        // Đóng dialog
-        setOpenExamDialog(false);
-      }}
-    />
-
     <ImageZoomDialog
       open={Boolean(zoomImage)}
       imageSrc={zoomImage}
       onClose={() => setZoomImage(null)}
     />
 
+    {/* Snackbar */}
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={3000}
+      onClose={handleCloseSnackbar}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    >
+      <Alert
+        onClose={handleCloseSnackbar}
+        severity={snackbar.severity}
+        sx={{ width: "100%" }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
   </Box>
 );
+
 
 }
