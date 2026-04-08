@@ -39,11 +39,6 @@ import { useTeacherQuizContext } from "../context/TeacherQuizContext";
 import DeleteIcon from "@mui/icons-material/Delete";
 import OpenExamDialog from "../dialog/OpenExamDialog";
 
-import { exportQuestionsToJSON } from "../utils/exportJson_importJson.js";
-import { importQuestionsFromJSON } from "../utils/exportJson_importJson.js";
-import DownloadIcon from "@mui/icons-material/Download";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-
 
 export default function TracNghiemGV() {
   const fileInputRef = useRef(null);
@@ -495,53 +490,6 @@ const handleSaveAll = async () => {
     setIsAddingLesson(true);
   };
 
-  const handleExportJSON = () => {
-    const result = exportQuestionsToJSON({
-      questions,
-      fileName: "de_trac_nghiem",
-    });
-
-    if (result.success) {
-      setSnackbar({
-        open: true,
-        message: "✅ Xuất đề thành công!",
-        severity: "success",
-      });
-    } else {
-      setSnackbar({
-        open: true,
-        message: "❌ Lỗi khi xuất đề!",
-        severity: "error",
-      });
-    }
-  };
-
-  const handleImportJSON = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const result = await importQuestionsFromJSON(file);
-
-    if (result.success) {
-      setQuestions(result.data);
-
-      setSnackbar({
-        open: true,
-        message: "✅ Nhập đề thành công!",
-        severity: "success",
-      });
-    } else {
-      setSnackbar({
-        open: true,
-        message: `❌ ${result.error}`,
-        severity: "error",
-      });
-    }
-
-    // reset input để chọn lại file cùng tên vẫn trigger
-    e.target.value = "";
-  };
-
   // ===== RENDER =====
   return (
     <Box sx={{ minHeight: "100vh", pt: 10, px: 3, backgroundColor: "#e3f2fd", display: "flex", justifyContent: "center" }}>
@@ -580,32 +528,6 @@ const handleSaveAll = async () => {
             ref={fileInputRef}
             style={{ display: "none" }}
             onChange={handleFileChange}
-          />
-
-          {/* Export */}
-          <Tooltip title="Xuất đề kiểm tra (JSON)">
-            <IconButton onClick={handleExportJSON} sx={{ color: "#2e7d32" }}>
-              <DownloadIcon />
-            </IconButton>
-          </Tooltip>
-
-          {/* Import */}
-          <Tooltip title="Nhập đề kiểm tra (JSON)">
-            <IconButton
-              onClick={() => fileInputRef.current.click()}
-              sx={{ color: "#ed6c02" }}
-            >
-              <UploadFileIcon />
-            </IconButton>
-          </Tooltip>
-
-          {/* Input file ẩn */}
-          <input
-            type="file"
-            accept=".json"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            onChange={handleImportJSON}
           />
         </Stack>
 
