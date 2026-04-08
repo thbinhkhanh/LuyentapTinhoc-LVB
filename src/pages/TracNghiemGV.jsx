@@ -17,6 +17,10 @@ import {
   Card,
   Tooltip,
   TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 
 import { db } from "../firebase";
@@ -31,7 +35,7 @@ import {
 } from "firebase/firestore";
 
 import SaveIcon from "@mui/icons-material/Save";
-import FileUploadIcon from "@mui/icons-material/FileUpload";
+//import FileUploadIcon from "@mui/icons-material/FileUpload";
 
 import QuestionCard from "../Types/questions/QuestionCard";
 import { saveAllQuestions } from "../utils/saveAllQuestions";
@@ -55,6 +59,9 @@ export default function TracNghiemGV() {
   const [lessonsFromFirestore, setLessonsFromFirestore] = useState([]);
   const { quizCache, setQuizCache } = useTeacherQuizContext();
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
+  const [fileName, setFileName] = useState("de_trac_nghiem");
+  const [openExportDialog, setOpenExportDialog] = useState(false); // dialog export
 
   const classes = ["Lớp 1", "Lớp 2", "Lớp 3", "Lớp 4", "Lớp 5"];
 
@@ -496,9 +503,44 @@ const handleSaveAll = async () => {
   };
 
   const handleExportJSON = () => {
+    let defaultName = "de_trac_nghiem";
+
+    if (selectedClass && lesson) {
+      // thay khoảng trắng bằng "_", bỏ dấu chấm
+      const lop = selectedClass.replace(/\s+/g, "_");
+      const bai = lesson.replace(/\s+/g, "_").replace(/\./g, "");
+      defaultName = `${lop}_${bai}`;
+    }
+
+    setFileName(defaultName);
+    setOpenExportDialog(true);
+  };
+  
+  const handleConfirmExport = () => {
+    setOpenExportDialog(false); // đóng dialog
+
+    let finalName = fileName.trim();
+
+    if (!finalName) {
+      setSnackbar({
+        open: true,
+        message: "❌ Tên file không được để trống",
+        severity: "error",
+      });
+      return;
+    }
+
+    // 🔥 Xóa hẳn phần: .json_123456
+    finalName = finalName.replace(/\.json_\d+$/, "");
+
+    // 🔥 nếu chưa có .json thì thêm
+    if (!finalName.endsWith(".json")) {
+      finalName += ".json";
+    }
+
     const result = exportQuestionsToJSON({
       questions,
-      fileName: "de_trac_nghiem",
+      fileName: finalName,
     });
 
     if (result.success) {
@@ -515,7 +557,6 @@ const handleSaveAll = async () => {
       });
     }
   };
-
   const handleImportJSON = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -560,7 +601,7 @@ const handleSaveAll = async () => {
 
           <Tooltip title="Tải tên bài học từ Excel">
             <IconButton onClick={handleUploadClick} sx={{ color: "#1976d2" }}>
-              <FileUploadIcon />
+              <UploadFileIcon /> {/* thay icon cũ bằng icon mới */}
             </IconButton>
           </Tooltip>
 
@@ -792,6 +833,49 @@ const handleSaveAll = async () => {
           open={openDeleteDialog}
           onClose={() => setOpenDeleteDialog(false)}
         />
+
+        <Dialog
+          open={openExportDialog}
+          onClose={() => setOpenExportDialog(false)}
+          fullWidth
+          maxWidth="sm" // sm | md | lg (bạn có thể đổi md nếu muốn rộng hơn nữa)
+        >
+          <DialogTitle sx={{ fontWeight: "bold", pb: 1 }}>
+            📥 Xuất đề kiểm tra
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 1 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
+              Nhập tên file để lưu 
+            </Typography>
+
+            <TextField
+              fullWidth
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              label="Tên file"
+              placeholder="vd: de_trac_nghiem_lop_3"
+              autoFocus
+            />
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setOpenExportDialog(false)}
+              variant="outlined"
+            >
+              Hủy
+            </Button>
+
+            <Button
+              onClick={handleConfirmExport}
+              variant="contained"
+              sx={{ px: 3 }}
+            >
+              Xuất file
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         <Snackbar
           open={snackbar.open}
