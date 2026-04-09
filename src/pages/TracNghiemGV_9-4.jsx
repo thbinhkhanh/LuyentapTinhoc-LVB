@@ -22,10 +22,17 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
 
 import { db } from "../firebase";
-import { doc, getDoc, getDocs, updateDoc, setDoc, collection, writeBatch } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  setDoc,
+  collection,
+  writeBatch,
+} from "firebase/firestore";
 
 import SaveIcon from "@mui/icons-material/Save";
 //import FileUploadIcon from "@mui/icons-material/FileUpload";
@@ -35,15 +42,11 @@ import { saveAllQuestions } from "../utils/saveAllQuestions";
 import { useTeacherQuizContext } from "../context/TeacherQuizContext";
 import DeleteIcon from "@mui/icons-material/Delete";
 import OpenExamDialog from "../dialog/OpenExamDialog";
-import ExitAddLessonDialog from "../dialog/ExitAddLessonDialog";
 
 import { exportQuestionsToJSON } from "../utils/exportJson_importJson.js";
 import { importQuestionsFromJSON } from "../utils/exportJson_importJson.js";
 import DownloadIcon from "@mui/icons-material/Download";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import AddIcon from "@mui/icons-material/Add";
-import CloseIcon from "@mui/icons-material/Close";
-import InputAdornment from "@mui/material/InputAdornment";
 
 
 export default function TracNghiemGV() {
@@ -67,11 +70,6 @@ export default function TracNghiemGV() {
   const [isAddingLesson, setIsAddingLesson] = useState(false);
   const [newLessonName, setNewLessonName] = useState("");
   const [week, setWeek] = useState("");
-  const [lessonInput, setLessonInput] = useState("");
-  const [openExitDialog, setOpenExitDialog] = useState(false);
-  const [onConfirmExit, setOnConfirmExit] = useState(() => () => {});
-  const [justSaved, setJustSaved] = useState(false);
-
   const weeks =
     String(semester) === "1"
       ? Array.from({ length: 18 }, (_, i) => i + 1)      // HK I: 1 → 18
@@ -101,41 +99,15 @@ export default function TracNghiemGV() {
     questionImage: "",
   });
 
-  // ===== INIT QUESTIONS (FIX MẤT DỮ LIỆU KHI ĐANG SOẠN) =====
+  // ===== INIT QUESTIONS =====
   useEffect(() => {
-    const isAdding = localStorage.getItem("isAddingLesson") === "true";
-
-    // 🔥 Nếu đang thêm bài → dùng draft
-    if (isAdding) {
-      const draft = JSON.parse(localStorage.getItem("draftQuestions") || "[]");
-
-      if (Array.isArray(draft) && draft.length > 0) {
-        setQuestions(draft);
-        return;
-      }
-    }
-
-    // 🔥 QUAN TRỌNG: nếu đã có lesson → KHÔNG load ở đây
-    if (savedConfig.lesson) {
-      return; // 👉 để fetchExam xử lý
-    }
-
-    // fallback
     const saved = JSON.parse(localStorage.getItem("teacherQuiz") || "[]");
-
     if (Array.isArray(saved) && saved.length > 0) {
       setQuestions(saved);
     } else {
       setQuestions([createEmptyQuestion()]);
     }
   }, []);
-
-  // ===== AUTO SAVE DRAFT =====
-  useEffect(() => {
-    if (isAddingLesson) {
-      localStorage.setItem("draftQuestions", JSON.stringify(questions));
-    }
-  }, [questions, isAddingLesson]);
 
   // ===== SAVE CONFIG LOCAL =====
   useEffect(() => {
@@ -145,35 +117,14 @@ export default function TracNghiemGV() {
     );
   }, [selectedClass, semester, lesson]);
 
-  // ===== SYNC lesson → lessonInput =====
-  useEffect(() => {
-    if (lesson) {
-      setLessonInput(lesson);
-    }
-  }, [lesson]);
-
   // ===== FIRESTORE COLLECTION =====
   const getTracNghiemCollection = (lop) => {
     const num = lop.match(/\d+/)?.[0];
     return num ? `TRACNGHIEM${num}` : null;
   };
 
-  useEffect(() => {
-    const flag = localStorage.getItem("isAddingLesson") === "true";
-    setIsAddingLesson(flag);
-  }, []);
-
   // ===== FETCH EXAM =====
   const fetchExam = async ({ selectedClass, lessonFullName }) => {
-    // 🔥 CHẶN NGAY TỪ ĐẦU (an toàn hơn)
-    const isAdding =
-      isAddingLesson || localStorage.getItem("isAddingLesson") === "true";
-
-    if (isAdding) {
-      console.log("🚫 Đang thêm bài → bỏ qua fetchExam");
-      return;
-    }
-
     if (!selectedClass || !lessonFullName) return;
 
     const CACHE_KEY = `teacher_quiz_${selectedClass}_${lessonFullName}`;
@@ -336,13 +287,10 @@ export default function TracNghiemGV() {
     }
   };
 
+
   // ===== LOAD LAST OPENED EXAM =====
   useEffect(() => {
     const loadLastOpenedExam = async () => {
-      if (justSaved) return; // 🔥 chặn fetch sau khi vừa lưu
-      if (!lesson && lessonInput) return;
-      if (isAddingLesson || localStorage.getItem("isAddingLesson") === "true") return;
-
       try {
         const snap = await getDoc(doc(db, "CONFIG", "config"));
         if (!snap.exists()) return;
@@ -355,7 +303,6 @@ export default function TracNghiemGV() {
 
         if (lessons.includes(lesson)) {
           setLesson(lesson);
-          setLessonInput(lesson);
           fetchExam({ selectedClass, lessonFullName: lesson });
         }
       } catch (err) {
@@ -364,7 +311,7 @@ export default function TracNghiemGV() {
     };
 
     loadLastOpenedExam();
-  }, [isAddingLesson, lessonInput, justSaved]);
+  }, []);
 
   // ===== WHEN CLASS CHANGES: ONLY LOAD LESSON LIST =====
   useEffect(() => {
@@ -428,110 +375,72 @@ export default function TracNghiemGV() {
     localStorage.setItem("teacherQuiz", JSON.stringify(questions));
   };*/
 
+  
 const handleSaveAll = async () => {
-  // 🔴 kiểm tra lớp + bài học
-  const finalLesson = (lesson || lessonInput || "").trim();
-
-  if (!selectedClass || !finalLesson) {
+  // 🔴 CẢNH BÁO THIẾU DỮ LIỆU KHI THÊM BÀI HỌC
+  if (isAddingLesson && (!week || !newLessonName.trim())) {
     setSnackbar({
       open: true,
       severity: "warning",
-      message: "⚠️ Vui lòng chọn lớp và nhập bài học",
+      message: "⚠️ Vui lòng chọn tuần và nhập tên bài học mới",
     });
-    return;
+    return; // ⛔ không cho lưu
   }
 
-  const lessonName = finalLesson;
+  const lessonToSave =
+    isAddingLesson
+      ? `Tuần ${week}. ${newLessonName.trim()}`
+      : lesson;
 
-  // 🔴 nếu là bài tuần → validate format
-  const isWeekLesson = lessonName.toLowerCase().startsWith("tuần");
-  if (isWeekLesson) {
-    const isValid = /^Tuần\s\d+\.\s.+/.test(lessonName);
-    if (!isValid) {
-      setSnackbar({
-        open: true,
-        severity: "warning",
-        message: "⚠️ Định dạng phải: Tuần X. Tên bài",
-      });
-      return;
-    }
-  }
+  // 1. Lưu đề trắc nghiệm
+  await saveAllQuestions({
+    questions,
+    db,
+    selectedClass,
+    semester,
+    lesson: lessonToSave,
+    setSnackbar,
+  });
 
-  try {
-    // ===== LƯU ĐỀ =====
-    await saveAllQuestions({
-      questions,
-      db,
-      selectedClass,
-      semester,
-      lesson: lessonName,
-      setSnackbar,
+  localStorage.setItem("teacherQuiz", JSON.stringify(questions));
+
+  // 2. Nếu đang thêm bài học → thêm vào TENBAI_LopX
+  if (isAddingLesson) {
+    const lopNumber = selectedClass.replace("Lớp ", "");
+    const lessonDocRef = doc(db, `TENBAI_Lop${lopNumber}`, lessonToSave);
+
+    await setDoc(lessonDocRef, {
+      tenBai: lessonToSave, // ⭐ bắt buộc để hiển thị
+      createdAt: new Date(),
     });
 
-    // ✅ SET LẠI LESSON
-    setLesson(lessonName);
-    setLessonInput(lessonName);
+    // 3. Reload danh sách bài học
+    await fetchLessonsFromFirestore(selectedClass);
 
-    // 🔥 Chặn fetchExam sau khi vừa lưu
-    setJustSaved(true);
-
-    // 🔥 XÓA CACHE CŨ
-    const CACHE_KEY = `teacher_quiz_${selectedClass}_${lessonName}`;
-    localStorage.removeItem(CACHE_KEY);
-    setQuizCache((prev) => {
-      if (!prev) return {};
-      const next = { ...prev };
-      delete next[CACHE_KEY];
-      return next;
-    });
-
-    localStorage.setItem("teacherQuiz", JSON.stringify(questions));
-
-    // 🔥 TẮT CỜ thêm bài
-    setIsAddingLesson(false);
-    localStorage.removeItem("isAddingLesson");
-    localStorage.removeItem("draftQuestions");
-
-    // ===== AUTO THÊM BÀI MỚI NẾU CHƯA CÓ =====
-    if (!lessonsFromFirestore.includes(lessonName)) {
-      const lopNumber = selectedClass.replace("Lớp ", "");
-      const stt = lessonsFromFirestore.length + 1; // gán stt cho bài mới
-      await setDoc(doc(db, `TENBAI_Lop${lopNumber}`, lessonName), {
-        tenBai: lessonName,
-        createdAt: new Date(),
-        stt,
-      });
-
-      // reload list lessons & set state đúng
-      const lessons = await fetchLessonsFromFirestore(selectedClass);
-      setLessonsFromFirestore(lessons);
-    }
-
-    // ===== LƯU CONFIG =====
+    // 4. Lưu vào CONFIG/config
     await setDoc(
       doc(db, "CONFIG", "config"),
       {
         selectedClass,
-        lesson: lessonName,
+        lesson: lessonToSave,
       },
       { merge: true }
     );
 
-    {/*setSnackbar({
-      open: true,
-      message: "✅ Lưu đề thành công",
-      severity: "success",
-    });*/}
+    // 5. Chọn bài học mới
+    setLesson(lessonToSave);
 
-  } catch (err) {
-    console.error("❌ Lỗi lưu đề:", err);
-    setSnackbar({
-      open: true,
-      message: "❌ Lưu đề thất bại",
-      severity: "error",
-    });
+    // 6. Thoát chế độ thêm
+    setIsAddingLesson(false);
+    setWeek("");
+    setNewLessonName("");
   }
 };
+
+
+
+
+
 
   // ===== UPLOAD EXCEL =====
   const handleUploadClick = () => fileInputRef.current?.click();
@@ -579,15 +488,18 @@ const handleSaveAll = async () => {
   };
 
   const handleAddLesson = () => {
+    // 1. Lưu trạng thái hiện tại
     setPrevLesson(lesson);
     setPrevQuestions(questions);
 
-    setLesson("");          // 🔥 clear
-    setLessonInput("");     // 🔥 clear
+    // 2. Thoát bài học hiện tại
+    setLesson("");
+
+    // 3. Clear toàn bộ câu hỏi, tạo 1 câu mới
     setQuestions([createEmptyQuestion()]);
 
+    // 4. Vào chế độ thêm bài học
     setIsAddingLesson(true);
-    localStorage.setItem("isAddingLesson", "true");
   };
 
   const handleExportJSON = () => {
@@ -652,17 +564,7 @@ const handleSaveAll = async () => {
     const result = await importQuestionsFromJSON(file);
 
     if (result.success) {
-      // 🔥 Lưu trạng thái bài học hiện tại để restore
-      setPrevLesson(lesson);
-      setPrevQuestions(questions);
-
-      // 🔥 Chuyển sang chế độ thêm bài học (textfield)
-      setIsAddingLesson(true);
-
-      // 🔥 Set dữ liệu mới từ JSON
       setQuestions(result.data);
-      setLessonInput(""); // user sẽ nhập tên mới
-      setLesson("");      // ẩn dropdown
 
       setSnackbar({
         open: true,
@@ -691,34 +593,17 @@ const handleSaveAll = async () => {
           spacing={1}
           sx={{ position: "absolute", top: 8, left: 8 }}
         >
-          <Tooltip title="Thêm bài học">
-            <IconButton
-              onClick={handleAddLesson} // reuse logic nút Thêm bài học
-              sx={{ color: "#1976d2" }}
-            >
-              <Box
-                sx={{
-                  fontSize: 24,
-                  fontWeight: "bold",
-                  lineHeight: 1,
-                }}
-              >
-                +
-              </Box>
-            </IconButton>
-          </Tooltip>
-
           <Tooltip title="Lưu đề">
             <IconButton onClick={handleSaveAll} sx={{ color: "#1976d2" }}>
               <SaveIcon />
             </IconButton>
           </Tooltip>
 
-          {/*<Tooltip title="Tải tên bài học từ Excel">
+          <Tooltip title="Tải tên bài học từ Excel">
             <IconButton onClick={handleUploadClick} sx={{ color: "#1976d2" }}>
-              <UploadFileIcon /> 
+              <UploadFileIcon /> {/* thay icon cũ bằng icon mới */}
             </IconButton>
-          </Tooltip>*/}
+          </Tooltip>
 
           {/* 🗑️ ICON XÓA ĐỀ */}
           <Tooltip title="Xóa đề trắc nghiệm">
@@ -772,15 +657,9 @@ const handleSaveAll = async () => {
 
         <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-
-            {/* LỚP */}
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Lớp</InputLabel>
-              <Select
-                value={selectedClass}
-                label="Lớp"
-                onChange={(e) => setSelectedClass(e.target.value)}
-              >
+              <Select value={selectedClass} label="Lớp" onChange={(e) => setSelectedClass(e.target.value)}>
                 <MenuItem value="">Chọn</MenuItem>
                 {classes.map((c) => (
                   <MenuItem key={c} value={c}>{c}</MenuItem>
@@ -788,92 +667,146 @@ const handleSaveAll = async () => {
               </Select>
             </FormControl>
 
-            {/* BÀI HỌC */}
-            {!isAddingLesson ? (
-              // ===== DROPDOWN =====
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <InputLabel>Bài học</InputLabel>
-                <Select
-                  value={lesson}
-                  label="Bài học"
-                  onChange={async (e) => {
-                    const value = e.target.value;
+          {/* ================= BÀI HỌC ================= */}
+          <Stack direction="row" spacing={2} alignItems="flex-end">
+            {/* Ô Bài học – GIỮ NGUYÊN WIDTH GỐC */}
+            <FormControl
+              size="small"
+              sx={{ width: { xs: "100%", md: 600 } }}
+              disabled={!selectedClass}
+            >
+              {!isAddingLesson ? (
+                <>
+                  <InputLabel>Bài học</InputLabel>
+                  <Select
+                    value={lesson}
+                    label="Bài học"
+                    onChange={async (e) => {
+                      const value = e.target.value;
 
-                    setLesson(value);
-                    setLessonInput(value); // 🔥 sync luôn
+                      // 1. set state
+                      setLesson(value);
 
-                    if (!value) {
-                      setQuestions([createEmptyQuestion()]);
-                      return;
-                    }
+                      // 2. lưu vào CONFIG/config
+                      try {
+                        await setDoc(
+                          doc(db, "CONFIG", "config"),
+                          {
+                            selectedClass,
+                            lesson: value,
+                          },
+                          { merge: true }
+                        );
+                      } catch (err) {
+                        console.error("❌ Không lưu lesson vào CONFIG:", err);
+                      }
 
-                    await setDoc(doc(db, "CONFIG", "config"), {
-                      selectedClass,
-                      lesson: value,
-                    }, { merge: true });
-
-                    fetchExam({
-                      selectedClass,
-                      lessonFullName: value,
-                    });
-                  }}
+                      // 3. load đề
+                      fetchExam({
+                        selectedClass,
+                        lessonFullName: value,
+                      });
+                    }}
+                    sx={{
+                      "& .MuiSelect-select": {
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                      },
+                    }}
+                  >
+                    <MenuItem value="">Chọn</MenuItem>
+                    {lessonsFromFirestore.map((bai) => (
+                      <MenuItem
+                        key={bai}
+                        value={bai}
+                        sx={{ whiteSpace: "normal", wordBreak: "break-word" }}
+                      >
+                        {bai}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </>
+              ) : (
+                /* ===== THÊM BÀI HỌC – 1 HÀNG (TỔNG = 600px) ===== */
+                <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={2}
+                  alignItems={{ xs: "stretch", md: "center" }}
+                  sx={{ width: "100%" }} // = 600px
                 >
-                  <MenuItem value="">Chọn</MenuItem>
-                  {lessonsFromFirestore.map((l) => (
-                    <MenuItem key={l} value={l}>
-                      {l}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              // ===== INPUT NHẬP TÊN + NÚT X =====
-              <TextField
-                label="Nhập tên bài học mới"
-                size="small"
-                value={lessonInput}
-                onChange={(e) => setLessonInput(e.target.value)}
-                sx={{ flex: 1 }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Tooltip title="Thoát chế độ nhập" arrow>
-                        <IconButton
-                          size="small"
-                          edge="end"
-                          onClick={() => {
-                            // gán callback reset dữ liệu
-                            setOnConfirmExit(() => () => {
-                              setIsAddingLesson(false);
-                              localStorage.removeItem("isAddingLesson");
+                  {/* Ô TUẦN – 110px */}
+                  <FormControl
+                    size="small"
+                    sx={{
+                      width: { xs: "100%", md: 110 },
+                      flexShrink: 0,
+                    }}
+                  >
+                    <InputLabel>Tuần</InputLabel>
+                    <Select
+                      value={week}
+                      label="Tuần"
+                      onChange={(e) => setWeek(e.target.value)}
+                    >
+                      {weeks.map((w) => (
+                        <MenuItem key={w} value={w}>
+                          Tuần {w}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                              setLessonInput("");
+                  {/* Ô TÊN BÀI HỌC MỚI – 474px CHUẨN */}
+                  <TextField
+                    size="small"
+                    label="Tên bài học mới"
+                    value={newLessonName}
+                    onChange={(e) => setNewLessonName(e.target.value)}
+                    autoFocus
+                    sx={{
+                      width: { xs: "100%", md: 474 },
+                      flex: "0 0 auto",   // ❗ giữ cứng 474px
+                    }}
+                  />
 
-                              if (prevLesson) {
-                                setLesson(prevLesson);
-                                setQuestions(prevQuestions);
-                              } else {
-                                setLesson("");
-                                setQuestions([createEmptyQuestion()]);
-                              }
+                  {/* Hủy */}
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      alignSelf: { xs: "flex-end", md: "center" },
+                      flexShrink: 0,
+                    }}
+                    onClick={() => {
+                      setIsAddingLesson(false);
+                      setNewLessonName("");
+                      setWeek("");
+                    }}
+                  >
+                    Hủy
+                  </Button>
+                </Stack>
 
-                              setOpenExitDialog(false); // đóng dialog
-                            });
+              )}
+            </FormControl>
 
-                            // mở dialog cảnh báo
-                            setOpenExitDialog(true);
-                          }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </InputAdornment>
-                  ),
-                }}
-              />
+            {/* NÚT THÊM BÀI HỌC – GIỐNG NÚT THÊM CÂU HỎI */}
+            {!isAddingLesson && (
+              <Button
+                variant="contained"
+                onClick={handleAddLesson}
+                sx={{ height: 40, whiteSpace: "nowrap" }}
+              >
+                <Box sx={{ display: { xs: "inline", md: "none" } }}>
+                  Thêm
+                </Box>
+                <Box sx={{ display: { xs: "none", md: "inline" } }}>
+                  Thêm bài học
+                </Box>
+              </Button>
 
             )}
-
+          </Stack>
           </Stack>
         </Paper>
 
@@ -901,11 +834,6 @@ const handleSaveAll = async () => {
           onClose={() => setOpenDeleteDialog(false)}
         />
 
-        <ExitAddLessonDialog
-          open={openExitDialog}
-          onClose={() => setOpenExitDialog(false)}
-          onConfirmExit={onConfirmExit}
-        />
         <Dialog
           open={openExportDialog}
           onClose={() => setOpenExportDialog(false)}
