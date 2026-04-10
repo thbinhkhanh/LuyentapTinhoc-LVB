@@ -592,12 +592,12 @@ const handleSaveAll = async () => {
   };
 
   const handleExportJSON = () => {
-    let defaultName = "de_trac_nghiem";
+    let defaultName = "";
 
     if (selectedClass && lesson) {
       // thay khoảng trắng bằng "_", bỏ dấu chấm
-      const lop = selectedClass.replace(/\s+/g, "_");
-      const bai = lesson.replace(/\s+/g, "_").replace(/\./g, "");
+      const lop = selectedClass.replace(/\s+/g, " ");
+      const bai = lesson.replace(/\s+/g, " ").replace(/\./g, "");
       defaultName = `${lop}_${bai}`;
     }
 
