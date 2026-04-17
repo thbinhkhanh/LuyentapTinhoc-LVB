@@ -98,7 +98,7 @@ export default function TracNghiemGV() {
     correct: [],
     sortType: "fixed",
     pairs: [],
-    answers: [],
+    //answers: [],
     questionImage: "",
   });
 
