@@ -101,10 +101,10 @@ const MatchingOptions = ({ q, qi, update }) => {
             sx={{ minHeight: rowHeight }}
           >
             {/* ================= LEFT ================= */}
-           <Box
+            <Box
               sx={{
-                flexGrow: ratio.left,   // ⭐ theo tỉ lệ
-                flexBasis: 0,           // ⭐ bắt buộc
+                flexGrow: ratio.left,   // ⭐ ăn theo dropdown
+                flexBasis: 0,           // ⭐ BẮT BUỘC
                 display: "flex",
                 alignItems: "center",
               }}
@@ -176,7 +176,12 @@ const MatchingOptions = ({ q, qi, update }) => {
 
 
             {/* ================= ICONS (GIỮ NGUYÊN) ================= */}
-            <Stack direction="row" spacing={0.5}>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{ flexShrink: 0 }}
+            >
+
               {!pair.leftIconImage ? (
                 <Tooltip title="Chèn hình trước text">
                   <IconButton
@@ -274,11 +279,10 @@ const MatchingOptions = ({ q, qi, update }) => {
             {/* ================= RIGHT ================= */}
             <Box
               sx={{
-                flexGrow: ratio.right,  // ⭐ theo tỉ lệ
-                flexBasis: 0,
+                flexGrow: ratio.right,  // ⭐ ăn theo dropdown
+                flexBasis: 0,           // ⭐ BẮT BUỘC
               }}
             >
-
               <ReactQuill
                 ref={(el) => (quillRefs.current[`${pi}-right`] = el)}
                 theme="snow"

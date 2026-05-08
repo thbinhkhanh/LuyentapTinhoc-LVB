@@ -12,7 +12,7 @@ import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { ConfigContext } from "../context/ConfigContext";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 
 // Import Backup & Restore Page
@@ -41,6 +41,22 @@ export default function QuanTri() {
   const [openRestore, setOpenRestore] = useState(false);
 
   const heThong = config.heThong || "old";
+
+  useEffect(() => {
+    const ref = doc(db, "CONFIG", "config");
+
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        setConfig(snap.data());
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (config?.namHoc) setSelectedYear(config.namHoc);
+  }, [config?.namHoc]);
 
   // ===== Lấy danh sách lớp =====
   useEffect(() => {
@@ -264,7 +280,6 @@ export default function QuanTri() {
             )}
 
             {/* Thời gian làm bài */}
-            {/* Thời gian làm bài */}
             <Box display="flex" alignItems="center" gap={1}>
               <Typography sx={{ minWidth: 140 }}>Thời gian làm bài (phút)</Typography>
               <TextField
@@ -275,21 +290,9 @@ export default function QuanTri() {
                 inputProps={{ min: 1, style: { width: 60, textAlign: "center" } }}
               />
             </Box>
-
-            {/* Checkbox ẩn / hiện đồng hồ */}
-            <Box display="flex" alignItems="center" gap={1} ml={2}>
-              <Checkbox
-                checked={config.showTimer ?? true}
-                onChange={(e) =>
-                  updateConfigField("showTimer", e.target.checked, true)
-                }
-              />
-              <Typography>Hiển thị đồng hồ đếm ngược</Typography>
-            </Box>
-
             
             {/* ===== CHỌN HỆ THỐNG ===== */}
-            <Box ml={2} mb={1}>
+            {/*<Box ml={2} mb={1}>
               <FormLabel sx={{ fontWeight: "bold" }}>Chọn hệ thống</FormLabel>
               <RadioGroup
                 row
@@ -310,7 +313,7 @@ export default function QuanTri() {
                 />
               </RadioGroup>
 
-            </Box>
+            </Box>*/}
 
             {/* Checkboxes */}
             <Box ml={2} mt={1}>

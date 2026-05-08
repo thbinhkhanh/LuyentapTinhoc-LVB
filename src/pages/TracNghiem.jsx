@@ -32,10 +32,20 @@ import { useStudentQuizContext } from "../context/StudentQuizContext";
 
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-
+import CloseIcon from "@mui/icons-material/Close";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+
+/*import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";*/
+
+import { getQuestionStatus } from "../utils/questionStatus";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 import { useLocation } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
@@ -45,9 +55,8 @@ import ExitConfirmDialog from "../dialog/ExitConfirmDialog";
 import ResultDialog from "../dialog/ResultDialog";
 import { useSearchParams } from "react-router-dom";
 import ImageZoomDialog from "../dialog/ImageZoomDialog";
-import { getQuestionStatus } from "../utils/questionStatus";
-import { useTheme, useMediaQuery } from "@mui/material";
 import QuestionRenderer from "../Types/questions/QuestionRenderer";
+import { normalizeQuestion } from "../utils/normalizeQuestion";
 
 // Hàm shuffle mảng
 function shuffleArray(array) {
@@ -58,6 +67,19 @@ function shuffleArray(array) {
   }
   return arr;
 }
+
+function normalizeQuestions(rawQuestions) {
+  if (!Array.isArray(rawQuestions)) return [];
+
+  // Shuffle toàn bộ danh sách câu hỏi
+  const shuffled = shuffleArray(rawQuestions);
+
+  // Chuẩn hóa từng câu hỏi
+  return shuffled
+    .map((q, idx) => normalizeQuestion(q, idx))
+    .filter(Boolean);
+}
+
 
 export default function TracNghiem() {
   const location = useLocation();
@@ -118,19 +140,9 @@ export default function TracNghiem() {
   
   function getTenBaiRutGon(tenBai) {
     if (!tenBai) return "";
-
-    // Ưu tiên rút gọn Tuần
-    const tuanMatch = tenBai.match(/^Tuần\s+\d+/i);
-    if (tuanMatch) return tuanMatch[0];
-
-    // Sau đó rút gọn Bài
-    const baiMatch = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
-    if (baiMatch) return baiMatch[0];
-
-    // Còn lại giữ nguyên
-    return tenBai;
+    const match = tenBai.match(/^Bài\s+\d+[A-Z]?/i);
+    return match ? match[0] : tenBai;
   }
-
 
   useEffect(() => {
     // ✅ 0️⃣ LƯU BÀI ĐANG LÀM (ĐÚNG CHỖ)
@@ -140,10 +152,9 @@ export default function TracNghiem() {
       localStorage.setItem(
         "lastExam",
         JSON.stringify({
-          khoi,
           lop: lopHoc,
           bai: tenBai,
-          bai: tenBaiRutGon, // ✅ dùng rút gọn
+          baiRutGon: tenBaiRutGon,
           path: location.pathname + location.search,
         })
       );
@@ -238,9 +249,6 @@ export default function TracNghiem() {
       try {
         setLoading(true);
 
-        // =======================
-        // ❌ CHẶN LỖI NGAY ĐẦU
-        // =======================
         if (!lopHoc || !tenBai) {
           setSnackbar({
             open: true,
@@ -251,13 +259,15 @@ export default function TracNghiem() {
           return;
         }
 
-        const CACHE_KEY = `quiz_${lopHoc}_${tenBai}`;
-        const collectionName = `TRACNGHIEM${lopHoc}`;
+        const snapConfig = await getDoc(doc(db, "CONFIG", "config"));
+        const namHoc = snapConfig.exists() ? snapConfig.data().namHoc : "";
+
+        const collectionName =
+          namHoc === "2025-2026"
+            ? `TRACNGHIEM${lopHoc}`
+            : `TRACNGHIEM${lopHoc}_New`;
         const docId = tenBai;
 
-        // =======================
-        // 🔥 1. LUÔN ĐỌC FIRESTORE TRƯỚC (LẤY updatedAt)
-        // =======================
         const docRef = doc(db, collectionName, docId);
         const docSnap = await getDoc(docRef);
 
@@ -275,257 +285,10 @@ export default function TracNghiem() {
             ? data.updatedAt
             : data.updatedAt?.toMillis?.() ?? 0;
 
-        // =======================
-        // ✅ 2. CONTEXT (VALIDATE)
-        // =======================
-        const cacheFromContext = quizCache?.[CACHE_KEY];
+        // --- Chuẩn hóa + shuffle toàn bộ câu hỏi bằng hàm riêng ---
+        const loadedQuestions = normalizeQuestions(data.questions);
 
-        if (
-          cacheFromContext &&
-          cacheFromContext.updatedAt === serverUpdatedAt &&
-          Array.isArray(cacheFromContext.questions)
-        ) {
-          //console.log("🧠 LOAD FROM CONTEXT (VALID)", CACHE_KEY);
-
-          setQuestions(cacheFromContext.questions);
-          setQuizClass(cacheFromContext.class || "");
-          setStarted(true);
-          setProgress(100);
-          setLoading(false);
-          return;
-        }
-
-        // =======================
-        // ✅ 3. LOCALSTORAGE (VALIDATE)
-        // =======================
-        const stored = localStorage.getItem(CACHE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-
-          if (
-            parsed.updatedAt === serverUpdatedAt &&
-            Array.isArray(parsed.questions)
-          ) {
-            //console.log("💾 LOAD FROM LOCALSTORAGE (VALID)", CACHE_KEY);
-
-            setQuestions(parsed.questions);
-            setQuizClass(parsed.class || "");
-            setStarted(true);
-            setProgress(100);
-
-            // ✅ sync lại context (LƯU NHIỀU ĐỀ)
-            setQuizCache(prev => ({
-              ...prev,
-              [CACHE_KEY]: parsed,
-            }));
-
-            setLoading(false);
-            return;
-          } else {
-            // ❌ đề cũ → xoá
-            localStorage.removeItem(CACHE_KEY);
-          }
-        }
-
-        // --- Xử lý câu hỏi ---
-        let saved = Array.isArray(data.questions) ? data.questions : [];
-        saved = shuffleArray(saved);
-
-        const loadedQuestions = saved.map((q, index) => {
-          const questionId = q.id ?? `q_${index}`;
-          const questionText = typeof q.question === "string" ? q.question.trim() : "";
-          const rawType = (q.type || "").toString().trim().toLowerCase();
-          const type = ["sort", "matching", "single", "multiple", "image", "truefalse", "fillblank"].includes(rawType)
-            ? rawType
-            : null;
-          if (!type) return null;
-
-          if (type === "matching") {
-            const pairs = Array.isArray(q.pairs) ? q.pairs : [];
-            if (pairs.length === 0) return null;
-
-            //console.log("🔥 RAW MATCHING PAIRS:", pairs);
-
-            const leftOptions = pairs.map((p, idx) => {
-              // --- CASE 1: editor lưu { leftImage: { url, name } } ---
-              if (p.leftImage && p.leftImage.url) {
-                //console.log(`🔥 left[${idx}] = leftImage`, p.leftImage.url);
-                return { type: "image", url: p.leftImage.url, name: p.leftImage.name || `img-${idx}` };
-              }
-
-              // --- CASE 2: left là chuỗi URL ---
-              if (typeof p.left === "string" && /^https?:\/\//i.test(p.left.trim())) {
-                //console.log(`🔥 left[${idx}] = URL`, p.left);
-                return { type: "image", url: p.left.trim(), name: `img-${idx}` };
-              }
-
-              // --- CASE 3: để nguyên dạng text ---
-              //console.log(`🔥 left[${idx}] = text`, p.left);
-              return p.left ?? "";
-            });
-
-            // cột phải: đảo cho đến khi khác ít nhất 1 phần tử
-            const rightOptionsOriginal = pairs.map((p, idx) => ({ opt: p.right, idx }));
-            const processedRightOptions =
-              q.sortType === "shuffle"
-                ? shuffleUntilDifferent(rightOptionsOriginal)
-                : rightOptionsOriginal;
-
-            const originalRightIndexMap = {};
-            processedRightOptions.forEach((item, newIndex) => {
-              originalRightIndexMap[item.idx] = newIndex;
-            });
-
-            const newCorrect = leftOptions.map((_, i) => originalRightIndexMap[i]);
-
-            return {
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              image: q.image ?? null,
-              leftOptions,
-              rightOptions: processedRightOptions.map(i => i.opt),
-              correct: newCorrect,
-              score: q.score ?? 1,
-            };
-          }
-
-          if (type === "sort") {
-            const options = Array.isArray(q.options) && q.options.length > 0
-              ? [...q.options]
-              : ["", "", "", ""];
-
-            const indexed = options.map((opt, idx) => ({ opt, idx }));
-
-            // Nếu sortType là "shuffle" thì đảo, nếu là "fixed" thì giữ nguyên
-            const processed =
-              q.sortType === "shuffle"
-                ? shuffleUntilDifferent(indexed)
-                : indexed;
-
-            const shuffledOptions = processed.map(i => i.opt);
-
-            return {
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              image: q.image ?? null,
-              options: shuffledOptions,                    // hiển thị theo shuffle hoặc giữ nguyên
-              initialSortOrder: processed.map(i => i.idx), // thứ tự index sau shuffle/giữ nguyên
-              correctTexts: options,                       // đáp án đúng: text gốc Firestore
-              score: q.score ?? 1,
-            };
-          }
-
-          if (type === "single" || type === "multiple") {
-            // Chuẩn hóa options
-            const options = Array.isArray(q.options) && q.options.length > 0
-              ? q.options.map((opt) => {
-                  if (typeof opt === "string") {
-                    // Nếu là URL => đặt vào image, còn text để trống
-                    if (/^https?:\/\/.*\.(png|jpg|jpeg|gif)$/i.test(opt)) {
-                      return { text: "", image: opt };
-                    }
-                    return { text: opt, image: null };
-                  } else if (typeof opt === "object") {
-                    // Giữ text và image, nếu text là URL hình => vẫn giữ cả hai
-                    return {
-                      text: opt.text ?? "",
-                      image: opt.image ?? null
-                    };
-                  }
-                  return { text: "", image: null };
-                })
-              : [
-                  { text: "", image: null },
-                  { text: "", image: null },
-                  { text: "", image: null },
-                  { text: "", image: null },
-                ];
-
-            const indexed = options.map((opt, idx) => ({ opt, idx }));
-            const shouldShuffle = q.sortType === "shuffle" || q.shuffleOptions === true;
-            const shuffled = shouldShuffle ? shuffleArray(indexed) : indexed;
-
-            return { 
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              image: q.image ?? null,      // hình minh họa câu hỏi
-              options,                     // mảng chuẩn {text, image}
-              displayOrder: shuffled.map(i => i.idx),
-              correct: Array.isArray(q.correct) 
-                ? q.correct.map(Number) 
-                : typeof q.correct === "number" 
-                  ? [q.correct] 
-                  : [],
-              score: q.score ?? 1
-            };
-          }
-
-          if (type === "image") {
-            const options = Array.isArray(q.options) && q.options.length > 0 ? q.options : ["", "", "", ""];
-            const correct = Array.isArray(q.correct) ? q.correct : [];
-            return { 
-              ...q, 
-              id: questionId, 
-              type, 
-              question: questionText, 
-              image: q.image ?? null,          // ✅ Thêm image
-              options, 
-              displayOrder: shuffleArray(options.map((_, idx) => idx)), 
-              correct, 
-              score: q.score ?? 1 
-            };
-          }
-
-          if (type === "truefalse") {
-            const options = Array.isArray(q.options) && q.options.length >= 2
-              ? [...q.options]
-              : ["Đúng", "Sai"];
-
-            const indexed = options.map((opt, idx) => ({ opt, idx }));
-            const processed = q.sortType === "shuffle" ? shuffleArray(indexed) : indexed;
-
-            return {
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              image: q.image ?? null,
-              options: processed.map(i => i.opt),        // hiển thị theo shuffle
-              initialOrder: processed.map(i => i.idx),   // mapping: vị trí hiển thị -> index gốc
-              correct: Array.isArray(q.correct) && q.correct.length === options.length
-                ? q.correct                               // theo thứ tự gốc Firestore
-                : options.map(() => ""),
-              score: q.score ?? 1
-            };
-          }
-
-          if (type === "fillblank") {
-            const options = Array.isArray(q.options) ? q.options : []; // các đáp án đúng
-            const questionText = q.question || "";                     // câu có chỗ trống
-            return {
-              ...q,
-              id: questionId,
-              type,
-              question: questionText,
-              image: q.image ?? null,
-              option: q.option,               // giữ câu có dấu [...]
-              options,                        // đáp án đúng, giữ nguyên thứ tự gốc
-              shuffledOptions: shuffleArray([...options]), // shuffle một lần nếu cần
-              score: q.score ?? 1
-            };
-          }
-
-          return null;
-        }).filter(Boolean);
-
-
-        // --- Lọc câu hợp lệ bao gồm fillblank ---
+        // --- Lọc câu hợp lệ ---
         const validQuestions = loadedQuestions.filter(q => {
           if (q.type === "matching") return q.question.trim() !== "" && q.leftOptions.length > 0 && q.rightOptions.length > 0;
           if (q.type === "sort") return q.question.trim() !== "" && q.options.length > 0;
@@ -535,44 +298,25 @@ export default function TracNghiem() {
           return false;
         });
 
+        // --- Set state ---
         setQuestions(validQuestions);
-        // =======================
-        // ✅ LƯU CONTEXT + STORAGE
-        // =======================
+        setQuizClass(data.class || "");
+        setProgress(100);
+        setStarted(true);
+        setAnswers({});
+
+        // Nếu vẫn muốn lưu cache/context thì giữ lại đoạn này
         const cachePayload = {
-          key: CACHE_KEY,
+          key: `quiz_${lopHoc}_${tenBai}`,
           lopHoc,
           tenBai,
           class: data.class || "",
           questions: validQuestions,
-
-          updatedAt: serverUpdatedAt, // ✅ BẮT BUỘC
-          savedAt: Date.now(),        // (tuỳ, để debug)
+          updatedAt: serverUpdatedAt,
+          savedAt: Date.now(),
         };
-
-
-        setQuizCache(prev => ({
-          ...prev,
-          [CACHE_KEY]: cachePayload
-        }));
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
-
-
-        setProgress(100);
-        setStarted(true);
-
-        setAnswers(prev => {
-          const next = { ...prev };
-          validQuestions.forEach(q => {
-            if (q.type === "sort" && Array.isArray(q.initialSortOrder)) {
-              if (!Array.isArray(next[q.id])) {
-                next[q.id] = q.initialSortOrder;
-              }
-            }
-          });
-          return next;
-        });
+        setQuizCache(prev => ({ ...prev, [cachePayload.key]: cachePayload }));
+        localStorage.setItem(cachePayload.key, JSON.stringify(cachePayload));
 
       } catch (err) {
         console.error("❌ Lỗi khi load câu hỏi:", err);
@@ -583,7 +327,7 @@ export default function TracNghiem() {
     };
 
     fetchQuestions();
-  }, [tenBai, lopHoc]);
+  }, [lopHoc, tenBai]);
 
   // Hàm chuyển chữ đầu thành hoa
   const capitalizeName = (name = "") =>
@@ -860,15 +604,15 @@ return (
           >
             {tenBai ? tenBai.toUpperCase() : "TRẮC NGHIỆM"}
           </Typography>
-    
+
           {/* Đồng hồ với vị trí cố định */}
           <Box
             sx={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              mt: 0.5,
-              mb: -2,
+              mt: 2,
+              //mb: -2,
               minHeight: 10, // giữ khoảng trống luôn
               width: "100%",
             }}
@@ -895,15 +639,14 @@ return (
                 </Typography>
               </Box>
             )}
-    
-    
+
             {/* Đường gạch ngang màu xám nhạt luôn hiển thị */}
             <Box
               sx={{
                 width: "100%",
                 height: 1,
                 bgcolor: "#e0e0e0", // màu xám nhạt
-                mt: 5,
+                //mt: 0,
               }}
             />
           </Box>
@@ -919,27 +662,25 @@ return (
               </Box>
             </Box>
           )}
-
+      
           {/* KHU VỰC HIỂN THỊ CÂU HỎI */}
-          {!loading && currentQuestion && (
-            <QuestionRenderer
-              loading={loading}
-              currentQuestion={currentQuestion}
-              normalizeValue={normalizeValue}
-              currentIndex={currentIndex}
-              answers={answers}
-              setAnswers={setAnswers}
-              submitted={submitted}
-              started={started}
-              choXemDapAn={choXemDapAn}
-              handleSingleSelect={handleSingleSelect}
-              handleMultipleSelect={handleMultipleSelect}
-              handleDragEnd={handleDragEnd}
-              reorder={reorder}
-              ratio={ratio}
-              setZoomImage={setZoomImage}
-            />
-          )}
+          <QuestionRenderer
+            normalizeValue={normalizeValue}
+            loading={loading}
+            currentQuestion={currentQuestion}
+            currentIndex={currentIndex}
+            answers={answers}
+            setAnswers={setAnswers}
+            submitted={submitted}
+            started={started}
+            choXemDapAn={choXemDapAn}
+            handleSingleSelect={handleSingleSelect}
+            handleMultipleSelect={handleMultipleSelect}
+            handleDragEnd={handleDragEnd}
+            reorder={reorder}
+            ratio={ratio}
+            setZoomImage={setZoomImage}
+          />
 
           {/* ===== NÚT ĐIỀU HƯỚNG Ở ĐÁY PAPER ===== */}
           <Box sx={{ flexGrow: 1 }} />
@@ -1114,7 +855,7 @@ return (
         </Box>
       )}
     </Box>
-    
+
     {/* Dialog câu chưa làm */}
     <IncompleteAnswersDialog
       open={openAlertDialog}
@@ -1163,6 +904,5 @@ return (
     </Snackbar>
   </Box>
 );
-
 
 }

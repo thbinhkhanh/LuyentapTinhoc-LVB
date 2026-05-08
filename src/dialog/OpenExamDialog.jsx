@@ -17,7 +17,7 @@ import {
   Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import DeleteConfirmDialog from "../dialog/DeleteConfirmDialog";
@@ -31,11 +31,40 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
+  const [namHoc, setNamHoc] = useState("");
+
   const navigate = useNavigate();
+
+  // ===== LOAD NĂM HỌC =====
+  useEffect(() => {
+    const loadNamHoc = async () => {
+      try {
+        const snap = await getDoc(doc(db, "CONFIG", "config"));
+        if (snap.exists()) {
+          setNamHoc(snap.data().namHoc);
+        }
+      } catch (err) {
+        console.error("❌ Lỗi load năm học:", err);
+      }
+    };
+    loadNamHoc();
+  }, []);
+
+  // ===== HELPER COLLECTION =====
+  const getTracNghiemCollection = (lop) => {
+    const num = lop.match(/\d+/)?.[0];
+    if (!num || !namHoc) return null;
+
+    const isOldYear = namHoc === "2025-2026";
+
+    return isOldYear
+      ? `TRACNGHIEM${num}`
+      : `TRACNGHIEM${num}_New`;
+  };
 
   // ===== LOAD DANH SÁCH =====
   useEffect(() => {
-    if (!open || selectedClass === "Tất cả") {
+    if (!open) {
       setDocs([]);
       setSelectedDoc(null);
       return;
@@ -44,7 +73,9 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
     const fetchDocs = async () => {
       setLoading(true);
       try {
-        const colName = `TRACNGHIEM${selectedClass.replace("Lớp ", "")}`;
+        const colName = getTracNghiemCollection(selectedClass);
+        if (!colName) return;
+
         const snapshot = await getDocs(collection(db, colName));
 
         const data = snapshot.docs.map((d) => ({
@@ -64,7 +95,7 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
     };
 
     fetchDocs();
-  }, [open, selectedClass]);
+  }, [open, selectedClass, namHoc]);
 
   // ===== MỞ ĐỀ =====
   const handleOpenSelected = (docId) => {
@@ -84,7 +115,7 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
     }
   };
 
-  // ===== MỞ DIALOG XÁC NHẬN =====
+  // ===== CLICK XÓA =====
   const handleDeleteClick = () => {
     if (!selectedDoc) {
       alert("⚠️ Vui lòng chọn đề cần xóa!");
@@ -100,31 +131,33 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
     const deletedId = selectedDoc;
 
     try {
-      // 1️⃣ Cập nhật giao diện trước
+      const collectionName = getTracNghiemCollection(selectedClass);
+      if (!collectionName) throw new Error("Thiếu collection");
+
+      // 🔥 XÓA TRẮC NGHIỆM
+      await deleteDoc(doc(db, collectionName, deletedId));
+
+      // 🔥 XÓA TENBAI
+      const lopNumber = selectedClass.replace("Lớp ", "");
+      const isOldYear = namHoc === "2025-2026";
+
+      const tenBaiCollection = isOldYear
+        ? `TENBAI_Lop${lopNumber}`
+        : `TENBAI_Lop${lopNumber}_New`;
+
+      await deleteDoc(doc(db, tenBaiCollection, deletedId));
+
+      // 🔥 UPDATE UI
       setDocs(prev => prev.filter(item => item.id !== deletedId));
       setSelectedDoc(null);
 
-      // 2️⃣ Đóng dialog xác nhận
       setOpenDeleteDialog(false);
-
-      // 3️⃣ Xóa Firestore (chỉ từ lớp 3 -> 5)
-      const batchDeletes = [];
-
-      for (let i = 3; i <= 5; i++) {
-        batchDeletes.push(deleteDoc(doc(db, `TRACNGHIEM${i}`, deletedId)));
-        batchDeletes.push(deleteDoc(doc(db, `TENBAI_Lop${i}`, deletedId)));
-      }
-
-      await Promise.all(batchDeletes);
-
-      // 4️⃣ Hiện snackbar
       setSnackbarOpen(true);
 
     } catch (error) {
       console.error("❌ Lỗi khi xóa:", error);
     }
   };
-
 
   return (
     <>
@@ -158,7 +191,6 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
               onChange={(e) => setSelectedClass(e.target.value)}
               label="Lớp"
             >
-              <MenuItem value="Tất cả">Tất cả</MenuItem>
               {[3, 4, 5].map((n) => (
                 <MenuItem key={n} value={`Lớp ${n}`}>
                   Lớp {n}
@@ -179,14 +211,7 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
             }}
           >
             {loading ? (
-              <Box
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+              <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <CircularProgress />
               </Box>
             ) : docs.length === 0 ? (
@@ -207,7 +232,6 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
                     "&:hover": { backgroundColor: "#f5f5f5" },
                   }}
                   onClick={() => setSelectedDoc(docItem.id)}
-                  //onDoubleClick={() => handleOpenSelected(docItem.id)}
                 >
                   <Typography>{docItem.id}</Typography>
                 </Stack>
@@ -218,14 +242,6 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
 
         {/* ACTION */}
         <DialogActions sx={{ justifyContent: "center", gap: 2, pb: 2 }}>
-          {/*<Button
-            variant="contained"
-            disabled={!selectedDoc}
-            onClick={() => handleOpenSelected(selectedDoc)}
-          >
-            Mở đề
-          </Button>*/}
-
           <Button
             variant="contained"
             color="error"
@@ -237,7 +253,7 @@ const OpenExamDialog = ({ open, onClose, onSelectExam }) => {
         </DialogActions>
       </Dialog>
 
-      {/* DIALOG XÁC NHẬN */}
+      {/* CONFIRM DELETE */}
       <DeleteConfirmDialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}

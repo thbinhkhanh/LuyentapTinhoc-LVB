@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -16,238 +16,258 @@ import {
   Divider,
 } from "@mui/material";
 import BackupIcon from "@mui/icons-material/Backup";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import { onSnapshot } from "firebase/firestore";
 
-// ====== Cấu hình backup ======
+// ================== BACKUP KEYS ==================
 const BACKUP_KEYS = [
-  { key: "CONFIG", label: "Cấu hình hệ thống" },
-  { key: "MATKHAU", label: "Mật khẩu tài khoản" },
-
-  // ===== Nhóm Dữ liệu =====
   { key: "DANHSACHLOP", label: "Danh sách lớp", group: "Dữ liệu" },
   { key: "DATA", label: "Kết quả đánh giá", group: "Dữ liệu" },
 
-  // ===== Nhóm Tên bài học =====
   { key: "TENBAI_Lop1", label: "Bài lớp 1", group: "Bài học" },
   { key: "TENBAI_Lop2", label: "Bài lớp 2", group: "Bài học" },
   { key: "TENBAI_Lop3", label: "Bài lớp 3", group: "Bài học" },
   { key: "TENBAI_Lop4", label: "Bài lớp 4", group: "Bài học" },
   { key: "TENBAI_Lop5", label: "Bài lớp 5", group: "Bài học" },
 
-  // ===== Nhóm Trắc nghiệm =====
-  { key: "TRACNGHIEM1", label: "Trắc nghiệm lớp 1", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM2", label: "Trắc nghiệm lớp 2", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM3", label: "Trắc nghiệm lớp 3", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM4", label: "Trắc nghiệm lớp 4", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM5", label: "Trắc nghiệm lớp 5", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM1", label: "Lớp 1", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM2", label: "Lớp 2", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM3", label: "Lớp 3", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM4", label: "Lớp 4", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM5", label: "Lớp 5", group: "Trắc nghiệm" },
 ];
 
+const TENBAI_MAP = {
+  1: "Lop1",
+  2: "Lop2",
+  3: "Lop3",
+  4: "Lop4",
+  5: "Lop5",
+};
+
+// ================== FIX LOGIC THEO NAM HỌC ==================
+const isOldYear = (namHoc) => namHoc === "2025-2026";
+
+// nếu là 2025-2026 => CŨ
+// ngược lại => MỚI
+const getCollectionName = (base, namHoc) => {
+  return isOldYear(namHoc) ? base : `${base}_New`;
+};
+
+const getTenBaiCollection = (lop, namHoc) => {
+  const lopKey = TENBAI_MAP[lop];
+  if (!lopKey) return null;
+
+  return isOldYear(namHoc)
+    ? `TENBAI_${lopKey}`
+    : `TENBAI_${lopKey}_New`;
+};
 
 export default function BackupPage({ open, onClose }) {
-  // ================== STATE ==================
-const [backupOptions, setBackupOptions] = useState({});
-const [loading, setLoading] = useState(false);
-const [progress, setProgress] = useState(0);
-const [snackbar, setSnackbar] = useState({
-  open: false,
-  message: "",
-  severity: "success",
-});
-const [fakeProgress, setFakeProgress] = useState(null);
+  const [backupOptions, setBackupOptions] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [namHoc, setNamHoc] = useState("");
 
-// ================== INIT CHECKBOX ==================
-useEffect(() => {
-  const options = {};
-  BACKUP_KEYS.forEach(({ key }) => {
-    options[key] = true; // check hết
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
   });
-  setBackupOptions(options);
-}, []);
 
-const toggleOption = (key) => {
-  setBackupOptions((prev) => ({ ...prev, [key]: !prev[key] }));
-};
-
-// ================== FAKE PROGRESS (QUAN TRỌNG) ==================
-useEffect(() => {
-  if (!loading) return;
-
-  const timer = setInterval(() => {
-    setProgress((prev) => {
-      if (prev < 90) {
-        return prev + Math.random() * 2; // tăng chậm – mượt
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "CONFIG", "config"), (snap) => {
+      if (snap.exists()) {
+        setNamHoc(snap.data().namHoc);
       }
-      return prev;
     });
-  }, 200);
+    return () => unsub();
+  }, []);
 
-  setFakeProgress(timer);
+  // ================== INIT ==================
+  useEffect(() => {
+    const options = {};
+    BACKUP_KEYS.forEach(({ key }) => (options[key] = true));
+    setBackupOptions(options);
+  }, []);
 
-  return () => {
-    clearInterval(timer);
-    setFakeProgress(null);
+  const toggleOption = (key) => {
+    setBackupOptions((prev) => {
+      const newState = { ...prev };
+      const nextValue = !prev[key];
+
+      newState[key] = nextValue;
+
+      const match = key.match(/TRACNGHIEM(\d)/);
+      if (match) {
+        const lop = match[1];
+        const baiKey = `TENBAI_Lop${lop}`;
+        if (newState[baiKey] !== undefined) {
+          newState[baiKey] = nextValue;
+        }
+      }
+
+      return newState;
+    });
   };
-}, [loading]);
 
-// ================== EXPORT FILE ==================
-const exportBackupToJson = (data, backupOptions) => {
-  if (!data || Object.keys(data).length === 0) return;
-
-  const selectedCollections = Object.keys(backupOptions).filter(
-    (k) => backupOptions[k]
-  );
-  const collectionsName =
-    selectedCollections.length === BACKUP_KEYS.length
-      ? "full"
-      : selectedCollections.join("_");
-
-  const now = new Date();
-  const pad = (n) => n.toString().padStart(2, "0");
-  const timestamp = `${pad(now.getDate())}-${pad(
-    now.getMonth() + 1
-  )}-${now.getFullYear().toString().slice(-2)} (${pad(
-    now.getHours()
-  )}:${pad(now.getMinutes())}:${pad(now.getSeconds())})`;
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Backup_TracNghiem_BK_${collectionsName}_${timestamp}.json`;
-  a.click();
-};
-
-// ================== FETCH BACKUP ==================
-const fetchAllBackup = async (onProgress, selectedCollections) => {
-  try {
+  // ================== BACKUP DATA ==================
+  const fetchAllBackup = async (onProgress, selected) => {
     const backupData = {};
     let progressCount = 0;
 
-    const hasDATA = selectedCollections.includes("DATA");
-    const otherCollections = selectedCollections.filter((c) => c !== "DATA");
+    const hasDATA = selected.includes("DATA");
+    const others = selected.filter((c) => c !== "DATA");
 
     const DATA_WEIGHT = hasDATA ? 80 : 0;
-    const OTHERS_WEIGHT = hasDATA ? 20 : 100;
-    const otherStep =
-      otherCollections.length > 0
-        ? OTHERS_WEIGHT / otherCollections.length
-        : 0;
+    const OTHER_WEIGHT = hasDATA ? 20 : 100;
+    const step = others.length ? OTHER_WEIGHT / others.length : 0;
 
-    // ===== Backup các collection khác =====
-    for (const colName of otherCollections) {
-      const snap = await getDocs(collection(db, colName));
-      if (!snap.empty) backupData[colName] = {};
-      snap.forEach((d) => (backupData[colName][d.id] = d.data()));
+    // ================== OTHER ==================
+    for (const col of others) {
+      let realCol;
 
-      progressCount += otherStep;
-      onProgress((prev) =>
-        Math.max(prev, Math.round(progressCount))
-      );
+      // Nếu là TENBAI_LopX thì dùng getTenBaiCollection
+      if (col.startsWith("TENBAI_Lop")) {
+        const lop = col.replace("TENBAI_Lop", "");
+        realCol = getTenBaiCollection(lop, namHoc);
+      } else {
+        realCol = getCollectionName(col, namHoc);
+      }
+
+      if (!realCol) continue;
+
+      const snap = await getDocs(collection(db, realCol));
+      backupData[realCol] = {};
+
+      snap.forEach((d) => {
+        backupData[realCol][d.id] = d.data();
+      });
+
+      // ===== TENBAI auto theo TRACNGHIEM =====
+      if (col.startsWith("TRACNGHIEM")) {
+        const lop = col.replace("TRACNGHIEM", "");
+        const tenBaiCol = getTenBaiCollection(lop, namHoc);
+
+        if (tenBaiCol) {
+          const snapTB = await getDocs(collection(db, tenBaiCol));
+          backupData[tenBaiCol] = {};
+
+          snapTB.forEach((d) => {
+            backupData[tenBaiCol][d.id] = d.data();
+          });
+        }
+      }
+
+      progressCount += step;
+      onProgress((p) => Math.max(p, Math.round(progressCount)));
     }
 
-    // ===== Backup DATA =====
+    // ================== DATA ==================
     if (hasDATA) {
-      backupData.DATA = {};
+      const dataKey = getCollectionName("DATA", namHoc);
+      backupData[dataKey] = {};
 
-      const listSnap = await getDocs(collection(db, "DANHSACHLOP"));
+      // Sửa chỗ này: dùng getCollectionName cho DANHSACHLOP
+      const listSnap = await getDocs(collection(db, getCollectionName("DANHSACHLOP", namHoc)));
       const listDoc = listSnap.docs.find((d) => d.id === "list");
       const classList = listDoc?.data()?.list || [];
 
-      if (classList.length === 0) return backupData;
+      const perClass = DATA_WEIGHT / (classList.length || 1);
 
-      const perClassStep = DATA_WEIGHT / classList.length;
+      const results = await Promise.all(
+        classList.map(async (lop) => {
+          const classKey = lop.replace(".", "_");
 
-      // đọc DATA song song
-      const tasks = classList.map(async (lop) => {
-        const classKey = lop.replace(".", "_");
-        const hsSnap = await getDocs(
-          collection(db, "DATA", classKey, "HOCSINH")
-        );
-        if (hsSnap.empty) return null;
+          const snap = await getDocs(
+            collection(db, dataKey, classKey, "HOCSINH")
+          );
 
-        const hsData = {};
-        hsSnap.forEach((hs) => (hsData[hs.id] = hs.data()));
-        return { classKey, hsData };
-      });
+          const hs = {};
+          snap.forEach((d) => (hs[d.id] = d.data()));
 
-      const results = await Promise.all(tasks);
+          return { classKey, hs };
+        })
+      );
 
-      for (const result of results) {
-        progressCount += perClassStep;
-        onProgress((prev) =>
-          Math.max(prev, Math.round(progressCount))
-        );
+      for (const r of results) {
+        backupData[dataKey][r.classKey] = { HOCSINH: r.hs };
 
-        if (!result) continue;
-        backupData.DATA[result.classKey] = {
-          HOCSINH: result.hsData,
-        };
-      }
-
-      if (Object.keys(backupData.DATA).length === 0) {
-        delete backupData.DATA;
+        progressCount += perClass;
+        onProgress((p) => Math.max(p, Math.round(progressCount)));
       }
     }
 
     onProgress(100);
     return backupData;
-  } catch (err) {
-    console.error("❌ Lỗi backup:", err);
-    return {};
-  }
-};
+  };
 
-// ================== HANDLE BACKUP ==================
-const handleBackup = async () => {
-  const selected = Object.keys(backupOptions).filter(
-    (k) => backupOptions[k]
-  );
-  if (selected.length === 0) {
-    setSnackbar({
-      open: true,
-      severity: "warning",
-      message: "Vui lòng chọn ít nhất một dữ liệu để sao lưu",
+
+  // ================== EXPORT ==================
+  const exportBackupToJson = (data) => {
+    const now = new Date();
+
+    // Tạo chuỗi ngày/giờ: dd-mm-yyyy hh-mm-ss
+    const dateStr = `${String(now.getDate()).padStart(2, "0")}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}-${now.getFullYear()}`;
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}-${String(
+      now.getMinutes()
+    ).padStart(2, "0")}-${String(now.getSeconds()).padStart(2, "0")}`;
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
     });
-    return;
-  }
 
-  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+
+    // Đặt tên file: Backup_<namHoc> (dd-mm-yyyy hh-mm-ss).json
+    a.download = `LTTH_${namHoc} (${dateStr} ${timeStr}).json`;
+
+    a.click();
+  };
+
+
+  // ================== HANDLE ==================
+  const handleBackup = async () => {
+    const selected = Object.keys(backupOptions).filter(
+      (k) => backupOptions[k]
+    );
+
+    if (!selected.length) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Chọn ít nhất 1 mục",
+      });
+      return;
+    }
+
     setLoading(true);
-    setProgress(5); // kickstart
+    setProgress(5);
 
     const data = await fetchAllBackup(setProgress, selected);
 
-    setProgress(95); // export
-    exportBackupToJson(data, backupOptions);
+    setProgress(95);
+    exportBackupToJson(data);
 
     setProgress(100);
     setSnackbar({
       open: true,
       severity: "success",
-      message: "✅ Sao lưu dữ liệu thành công",
+      message: "Backup thành công",
     });
+
+    setLoading(false);
     onClose();
-  } catch (err) {
-    console.error(err);
-    setSnackbar({
-      open: true,
-      severity: "error",
-      message: "❌ Lỗi khi sao lưu dữ liệu",
-    });
-  } finally {
-    setTimeout(() => {
-      setLoading(false);
-      setProgress(0);
-    }, 500);
-  }
-};
+  };
 
-
+  /* ================= UI GIỮ NGUYÊN ================= */
   return (
   <>
     <Dialog
@@ -304,7 +324,7 @@ const handleBackup = async () => {
       <DialogContent dividers>
         <Stack spacing={1}>
           {/* Hệ thống */}
-          <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+          {/*<Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
             Hệ thống
           </Typography>
           <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
@@ -322,7 +342,7 @@ const handleBackup = async () => {
             ))}
           </Box>
 
-          <Divider sx={{ mt: 1, mb: 1 }} />
+          <Divider sx={{ mt: 1, mb: 1 }} />*/}
 
           {/* Dữ liệu */}
           <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
@@ -346,7 +366,7 @@ const handleBackup = async () => {
           <Divider sx={{ mt: 1, mb: 1 }} />
 
           {/* Bài học */}
-          <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
+          {/*<Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>
             Bài học
           </Typography>
           <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
@@ -370,7 +390,7 @@ const handleBackup = async () => {
             ))}
           </Box>
 
-          <Divider sx={{ mt: 1, mb: 1 }} />
+          <Divider sx={{ mt: 1, mb: 1 }} />*/}
 
           {/* Trắc nghiệm */}
           <Typography sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}>

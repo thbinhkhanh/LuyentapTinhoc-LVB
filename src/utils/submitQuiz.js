@@ -98,15 +98,19 @@ export const handleSubmitQuiz = async ({
 
         if (isCorrect) total += q.score ?? 1;
       } else if (q.type === "matching") {
-        const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
-        const correctArray = Array.isArray(q.correct) ? q.correct : [];
-        const isCorrect =
-          userArray.length > 0 &&
-          userArray.length === correctArray.length &&
-          userArray.every((val, i) => val === correctArray[i]);
-        if (isCorrect) total += q.score ?? 1;
+  const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
+  const correctArray = Array.isArray(q.correct) ? q.correct : [];
 
-      } else if (q.type === "truefalse") {
+  const normalizedUser = correctArray.map((_, i) =>
+    userArray[i] !== undefined ? userArray[i] : null
+  );
+
+  const isCorrect =
+    normalizedUser.length === correctArray.length &&
+    normalizedUser.every((val, i) => val === correctArray[i]);
+
+  if (isCorrect) total += q.score ?? 1;
+} else if (q.type === "truefalse") {
         const userArray = Array.isArray(rawAnswer) ? rawAnswer : [];
         const correctArray = Array.isArray(q.correct) ? q.correct : [];
 
@@ -146,8 +150,7 @@ export const handleSubmitQuiz = async ({
     const durationStr = formatTime(durationSec);
     const ngayKiemTra = new Date().toLocaleDateString("vi-VN");
     const maxScore = questions.reduce((sum, q) => sum + getQuestionMax(q), 0);
-    //const phanTram = Math.round((total / maxScore) * 100);
-    const phanTram = +((total / maxScore) * 100).toFixed(2);
+    const phanTram = Math.round((total / maxScore) * 100);
 
     // --- Chuẩn hóa tên học sinh ---
     const normalizeName = (name) =>
@@ -164,7 +167,7 @@ export const handleSubmitQuiz = async ({
     // --- Hiển thị kết quả ---
     setStudentResult({
       hoVaTen: capitalizeName(studentName),
-      lop: studentClass,
+      lop: studentClass, 
       bai: tenBaiRutGon,
       diem: total,
       diemTN: phanTram,
@@ -211,8 +214,7 @@ export const handleSubmitQuiz = async ({
       baiDocId
     );
 
-    //const diemQuyDoi = Math.round(phanTram / 10);
-    const diemQuyDoi = +((total / maxScore) * 10).toFixed(1);
+    const diemQuyDoi = Math.round(phanTram / 10);
 
     const baiSnap = await getDoc(baiRef);
 

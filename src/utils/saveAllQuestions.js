@@ -6,10 +6,14 @@ export const saveAllQuestions = async ({
   selectedClass,
   lesson,
   setSnackbar,
+  collectionName, // 🔥 thêm vào
 }) => {
   try {
     if (!selectedClass || !lesson) {
       throw new Error("Vui lòng chọn Lớp và Bài học");
+    }
+    if (!collectionName) {
+      throw new Error("Thiếu collectionName (lỗi năm học)");
     }
 
     const uploadImage = async (file) => {
@@ -93,9 +97,6 @@ export const saveAllQuestions = async ({
       questionsToSave.push(updatedQ);
     }
 
-    const classNumber = selectedClass.replace(/\D/g, "");
-    const collectionName = `TRACNGHIEM${classNumber}`;
-
     const quizRef = doc(db, collectionName, lesson);
     await setDoc(quizRef, {
       class: selectedClass,
@@ -112,7 +113,7 @@ export const saveAllQuestions = async ({
 
     setSnackbar({
       open: true,
-      message: "✅ Đã lưu bài học thành công!",
+      message: "✅ Lưu đề thành công",
       severity: "success",
     });
   } catch (err) {

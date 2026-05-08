@@ -21,8 +21,9 @@ import RestoreIcon from "@mui/icons-material/Restore";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { writeBatch, collection, getDocs } from "firebase/firestore";
 
-/* ================= BACKUP KEYS (GIỐNG BACKUP) ================= */
+/* ================= BACKUP KEYS ================= */
 const BACKUP_KEYS = [
   { key: "CONFIG", label: "Cấu hình hệ thống", group: "Hệ thống" },
   { key: "MATKHAU", label: "Mật khẩu tài khoản", group: "Hệ thống" },
@@ -36,12 +37,20 @@ const BACKUP_KEYS = [
   { key: "TENBAI_Lop4", label: "Bài lớp 4", group: "Bài học" },
   { key: "TENBAI_Lop5", label: "Bài lớp 5", group: "Bài học" },
 
-  { key: "TRACNGHIEM1", label: "Trắc nghiệm lớp 1", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM2", label: "Trắc nghiệm lớp 2", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM3", label: "Trắc nghiệm lớp 3", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM4", label: "Trắc nghiệm lớp 4", group: "Trắc nghiệm" },
-  { key: "TRACNGHIEM5", label: "Trắc nghiệm lớp 5", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM1", label: "Lớp 1", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM2", label: "Lớp 2", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM3", label: "Lớp 3", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM4", label: "Lớp 4", group: "Trắc nghiệm" },
+  { key: "TRACNGHIEM5", label: "Lớp 5", group: "Trắc nghiệm" },
 ];
+
+/* ================= FIX: map cũ / new ================= */
+const getRestoreCollection = (key, dataKeys) => {
+  const newKey = `${key}_New`;
+
+  if (dataKeys.includes(newKey)) return newKey;
+  return key;
+};
 
 export default function RestorePage({ open, onClose }) {
   const fileInputRef = useRef(null);
@@ -51,31 +60,43 @@ export default function RestorePage({ open, onClose }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [namHoc, setNamHoc] = useState("");
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
+  const [fileData, setFileData] = useState({}); // 👈 quan trọng
+
   /* ================= INIT ================= */
   useEffect(() => {
     if (!open) return;
+
     const initChecked = {};
     const initDisabled = {};
+
     BACKUP_KEYS.forEach(({ key }) => {
       initChecked[key] = false;
       initDisabled[key] = true;
     });
+
     setRestoreOptions(initChecked);
     setDisabledOptions(initDisabled);
     setSelectedFile(null);
+    setFileData({});
     setProgress(0);
     setLoading(false);
+
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [open]);
 
   const toggleOption = (key) => {
-    setRestoreOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+    setRestoreOptions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   /* ================= FILE LOAD ================= */
@@ -87,11 +108,18 @@ export default function RestorePage({ open, onClose }) {
 
     try {
       const json = JSON.parse(await file.text());
+
+      setFileData(json); // 👈 lưu toàn bộ file
+
       const checked = {};
       const disabled = {};
 
       BACKUP_KEYS.forEach(({ key }) => {
-        const hasData = json[key] && Object.keys(json[key]).length > 0;
+        const hasOld = json[key] && Object.keys(json[key]).length > 0;
+        const hasNew = json[`${key}_New`] && Object.keys(json[`${key}_New`]).length > 0;
+
+        const hasData = hasOld || hasNew;
+
         checked[key] = hasData;
         disabled[key] = !hasData;
       });
@@ -106,59 +134,50 @@ export default function RestorePage({ open, onClose }) {
       });
     }
   };
+  
 
   /* ================= RESTORE ================= */
-  const handleRestore = async () => {
-    const selectedKeys = Object.keys(restoreOptions).filter(
-      (k) => restoreOptions[k]
-    );
-
-    if (!selectedFile) {
-      setSnackbar({
-        open: true,
-        severity: "warning",
-        message: "Vui lòng chọn file phục hồi",
-      });
-      return;
-    }
-
-    if (selectedKeys.length === 0) {
-      setSnackbar({
-        open: true,
-        severity: "warning",
-        message: "Vui lòng chọn dữ liệu phục hồi",
-      });
-      return;
-    }
+  /*const handleRestore = async () => {
+    const selectedKeys = Object.keys(restoreOptions).filter((k) => restoreOptions[k]);
+    if (!selectedFile) return;
+    if (!selectedKeys.length) return;
 
     try {
       setLoading(true);
       setProgress(0);
 
-      const data = JSON.parse(await selectedFile.text());
-
-      // ===== Đếm tổng document =====
+      const data = fileData;
       let total = 0;
+
+      // Tính tổng số bản ghi
       selectedKeys.forEach((key) => {
+        const val = data[key] || data[`${key}_New`]; // chỉ lấy 1 trong 2
+        if (!val) return;
+
         if (key === "DATA") {
-          Object.values(data.DATA || {}).forEach((cls) => {
+          Object.values(val).forEach((cls) => {
             total += Object.keys(cls.HOCSINH || {}).length;
           });
         } else {
-          total += Object.keys(data[key] || {}).length;
+          total += Object.keys(val).length;
         }
       });
 
       let done = 0;
 
-      // ===== Restore =====
       for (const key of selectedKeys) {
+        const value = data[key] || data[`${key}_New`]; // lấy đúng key có trong file
+        if (!value) continue;
+
+        // ===== DATA =====
         if (key === "DATA") {
-          for (const classKey of Object.keys(data.DATA || {})) {
-            const hs = data.DATA[classKey].HOCSINH || {};
+          // Ghi đúng vào collection có trong file (DATA hoặc DATA_New)
+          const realKey = Object.keys(data).includes(`${key}_New`) ? `${key}_New` : key;
+          for (const classKey of Object.keys(value)) {
+            const hs = value[classKey].HOCSINH || {};
             for (const id of Object.keys(hs)) {
               await setDoc(
-                doc(db, "DATA", classKey, "HOCSINH", id),
+                doc(db, realKey, classKey, "HOCSINH", id),
                 hs[id],
                 { merge: true }
               );
@@ -166,21 +185,22 @@ export default function RestorePage({ open, onClose }) {
               setProgress(Math.round((done / total) * 100));
             }
           }
-        } else {
-          for (const id of Object.keys(data[key] || {})) {
-            await setDoc(doc(db, key, id), data[key][id], {
-              merge: true,
-            });
-            done++;
-            setProgress(Math.round((done / total) * 100));
-          }
+          continue;
+        }
+
+        // ===== NORMAL (TENBAI, TRACNGHIEM, CONFIG, ...) =====
+        const realKey = Object.keys(data).includes(`${key}_New`) ? `${key}_New` : key;
+        for (const id of Object.keys(value)) {
+          await setDoc(doc(db, realKey, id), value[id], { merge: true });
+          done++;
+          setProgress(Math.round((done / total) * 100));
         }
       }
 
       setSnackbar({
         open: true,
         severity: "success",
-        message: "✅ Phục hồi dữ liệu thành công",
+        message: "✅ Phục hồi thành công",
       });
       onClose();
     } catch (err) {
@@ -188,36 +208,87 @@ export default function RestorePage({ open, onClose }) {
       setSnackbar({
         open: true,
         severity: "error",
-        message: "❌ Lỗi khi phục hồi dữ liệu",
+        message: "❌ Lỗi phục hồi",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };*/
+
+  const handleRestore = async () => {
+    try {
+      setLoading(true);
+      setProgress(0);
+
+      const data = fileData;
+      const selectedKeys = Object.keys(restoreOptions).filter((k) => restoreOptions[k]);
+      if (!selectedFile || !selectedKeys.length) return;
+
+      for (const key of selectedKeys) {
+        const value = data[key] || data[`${key}_New`];
+        if (!value) continue;
+
+        const realKey = Object.keys(data).includes(`${key}_New`) ? `${key}_New` : key;
+
+        // Tạo batch cho từng collection
+        const batch = writeBatch(db);
+
+        // Xoá toàn bộ document cũ
+        const snap = await getDocs(collection(db, realKey));
+        snap.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+
+        // Ghi đè toàn bộ document mới từ file backup
+        if (key === "DATA") {
+          for (const classKey of Object.keys(value)) {
+            const hs = value[classKey].HOCSINH || {};
+            for (const id of Object.keys(hs)) {
+              batch.set(doc(db, realKey, classKey, "HOCSINH", id), hs[id]);
+            }
+          }
+        } else {
+          for (const id of Object.keys(value)) {
+            batch.set(doc(db, realKey, id), value[id]);
+          }
+        }
+
+        // Commit batch một lần
+        await batch.commit();
+      }
+
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "✅ Phục hồi thành công!",
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: "❌ Lỗi phục hồi",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= UI ================= */
+
+
+
+  /* ================= UI (GIỮ NGUYÊN) ================= */
   const renderGroup = (title, keys) => (
     <>
-      <Typography
-        sx={{ fontSize: "1rem", fontWeight: "bold", color: "error.main" }}
-      >
+      <Typography sx={{ fontWeight: "bold", color: "error.main" }}>
         {title}
       </Typography>
 
-      <Box
-        sx={{
-          ml: 3,
-          display: "flex",
-          flexDirection: "column",   // 👈 ÉP XUỐNG HÀNG
-        }}
-      >
+      <Box sx={{ ml: 3, display: "flex", flexDirection: "column" }}>
         {keys.map((key) => (
           <FormControlLabel
             key={key}
-            sx={{
-              width: "100%",        // 👈 mỗi checkbox chiếm trọn 1 hàng
-              m: 0,
-            }}
             control={
               <Checkbox
                 checked={restoreOptions[key] || false}
@@ -230,7 +301,7 @@ export default function RestorePage({ open, onClose }) {
         ))}
       </Box>
 
-      <Divider sx={{ mt: 1, mb: 1 }} />
+      <Divider sx={{ my: 1 }} />
     </>
   );
 
@@ -307,15 +378,15 @@ export default function RestorePage({ open, onClose }) {
 
         <DialogContent dividers>
           <Stack spacing={1}>
-            {renderGroup("Hệ thống", ["CONFIG", "MATKHAU"])}
+            {/*{renderGroup("Hệ thống", ["CONFIG", "MATKHAU"])}*/}
             {renderGroup("Dữ liệu", ["DANHSACHLOP", "DATA"])}
-            {renderGroup("Bài học", [
+            {/*{renderGroup("Bài học", [
               "TENBAI_Lop1",
               "TENBAI_Lop2",
               "TENBAI_Lop3",
               "TENBAI_Lop4",
               "TENBAI_Lop5",
-            ])}
+            ])}*/}
             {renderGroup("Trắc nghiệm", [
               "TRACNGHIEM1",
               "TRACNGHIEM2",
@@ -327,20 +398,14 @@ export default function RestorePage({ open, onClose }) {
         </DialogContent>
 
         {loading && (
-          <>
-            <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
-              <LinearProgress variant="determinate" value={progress} />
-            </Box>
-            <Typography
-              align="center"
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5 }}
-            >
-              Đang phục hồi... {progress}%
+          <Box sx={{ width: "50%", mx: "auto", mt: 3 }}>
+            <LinearProgress />
+            <Typography align="center" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Đang phục hồi dữ liệu...
             </Typography>
-          </>
+          </Box>
         )}
+
 
         <DialogActions>
           <Button onClick={onClose}>Hủy</Button>

@@ -123,32 +123,41 @@ export default function Lop3() {
   // ===== LOAD FIRESTORE =====
   useEffect(() => {
     const fetchLessons = async () => {
-      const snapshot = await getDocs(collection(db, 'TENBAI_Lop3'));
+      try {
+        const snapConfig = await getDocs(collection(db, "CONFIG"));
+        const configDoc = snapConfig.docs.find(d => d.id === "config");
+        const namHoc = configDoc?.data()?.namHoc;
 
-      const data = snapshot.docs
-        .map(doc => ({
-          title: doc.id,
-          stt: doc.data().stt,
-        }))
-        .sort((a, b) => a.stt - b.stt);
+        const collectionName =
+          namHoc === "2025-2026"
+            ? "TENBAI_Lop3"
+            : "TENBAI_Lop3_New";
 
-      setLessons(data);
+        const snapshot = await getDocs(collection(db, collectionName));
+
+        const data = snapshot.docs
+          .map(doc => ({
+            title: doc.id,
+            stt: doc.data().stt,
+          }))
+          .sort((a, b) => a.stt - b.stt);
+
+        setLessons(data);
+      } catch (err) {
+        console.error("❌ Lỗi load bài:", err);
+      }
     };
 
     fetchLessons();
   }, []);
 
   // ===== LỌC THEO HỌC KÌ =====
-  /*const lessonsByHocKi = lessons.filter(lesson =>
-    hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9
-  );*/
-  const lessonsByHocKi = lessons.filter(lesson => {
-    // 🟠 Bài theo tuần → luôn hiển thị
-    if (lesson.title.startsWith("Tuần")) return true;
-
-    // 🔵 Bài thường → chia theo học kì bằng stt
-    return hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9;
-  });
+  const [namHoc, setNamHoc] = useState("");
+  const lessonsByHocKi = lessons.filter(lesson =>
+    namHoc === "2025-2026"
+      ? (hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9)
+      : (hocKi === 1 ? lesson.stt <= 10 : lesson.stt > 10)
+  );
 
   // ===== CLICK CARD =====
   const handleSelect = (title) => {
@@ -160,7 +169,7 @@ export default function Lop3() {
     setHocKi(hk); // cập nhật state local
     setConfig(prev => ({ ...prev, hocKi: hk })); // cập nhật context
     localStorage.setItem('hocKi', hk); // lưu vào localStorage
-    //console.log("Học kì đã chọn:", hk);
+    console.log("Học kì đã chọn:", hk);
   };
 
   return (
@@ -215,7 +224,7 @@ export default function Lop3() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
           }}
         >
-          {/*{lessonsByHocKi.map((lesson) => {
+          {lessonsByHocKi.map((lesson) => {
             const ui = lessonUIByStt[lesson.stt] || {};
 
             return (
@@ -227,28 +236,7 @@ export default function Lop3() {
                 onClick={() => handleSelect(lesson.title)}
               />
             );
-          })}*/}
-          {lessonsByHocKi.map((lesson) => {
-            const isWeekLesson = lesson.title.startsWith("Tuần");
-
-            const ui = isWeekLesson
-              ? {
-                  icon: <ClipboardList size={32} color="#f57c00" />, // 🟠 icon cam
-                  color: 'warning',
-                }
-              : lessonUIByStt[lesson.stt] || {};
-
-            return (
-              <LessonCard
-                key={lesson.title}
-                title={lesson.title}
-                icon={ui.icon}
-                color={ui.color || 'primary'}
-                onClick={() => handleSelect(lesson.title)}
-              />
-            );
           })}
-
         </Box>
       </Box>
     </>

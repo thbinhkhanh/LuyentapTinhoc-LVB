@@ -30,12 +30,12 @@ import Login from './pages/Login';
 import QuanTri from './pages/QuanTri';
 import TongHopKQ from './pages/TongHopKQ';
 import SystemLockedDialog from './dialog/SystemLockedDialog';
-import { QuizProvider } from "./context/QuizContext";
-import { StudentQuizProvider } from "./context/StudentQuizContext";
-import { TeacherQuizProvider } from "./context/TeacherQuizContext";
 
 // Context
 import { ConfigProvider, ConfigContext } from './context/ConfigContext';
+import { QuizProvider } from "./context/QuizContext";
+import { StudentQuizProvider } from "./context/StudentQuizContext";
+import { TeacherQuizProvider } from "./context/TeacherQuizContext";
 
 // Firebase
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
@@ -95,6 +95,7 @@ function Navigation() {
 
   const [loginState, setLoginState] = useState(false);
   const [lockedDialogOpen, setLockedDialogOpen] = useState(false); // 🔒 Dialog trạng thái khóa
+  const [openLogo, setOpenLogo] = useState(false);
 
   useEffect(() => {
     const docRef = doc(db, 'CONFIG', 'config');
@@ -139,8 +140,10 @@ function Navigation() {
   const handleMenuClick = (item) => {
     if (item.action) {
       item.action();
+      return;
+    }
 
-    } else if (item.khoi) {
+    if (item.khoi) {
       if (config.locked) {
         setLockedDialogOpen(true);
         return;
@@ -148,34 +151,21 @@ function Navigation() {
 
       const soKhoi = item.khoi.replace('Khối ', '');
 
-      // ✅ HỆ THỐNG CŨ → VÀO THẲNG LỚP
-      if (config.heThong === 'old') {
+      // ✅ HỆ THỐNG CŨ → VÀO LỚP CŨ
+      /*if (config.heThong === 'old') {
         navigate(`/lop${soKhoi}`);
         return;
-      }
+      }*/
 
-      // ✅ HỆ THỐNG MỚI → QUA INFO
-      const newRouteMap = {
-        'Khối 1': '/lop1-new',
-        'Khối 2': '/lop2-new',
-        'Khối 3': '/lop3-new',
-        'Khối 4': '/lop4-new',
-        'Khối 5': '/lop5-new',
-      };
+      // ✅ HỆ THỐNG MỚI → VÀO LỚP MỚI (KHÔNG QUA INFO)
+      navigate(`/lop${soKhoi}-new`);
+      return;
+    }
 
-      navigate('/info', {
-        state: {
-          khoi: item.khoi,
-          heThong: 'new',
-          target: newRouteMap[item.khoi],
-        },
-      });
-    }
-    else {
-      // ✅ BẮT BUỘC PHẢI CÓ
-      navigate(item.path);
-    }
+    // ✅ MENU KHÁC
+    navigate(item.path);
   };
+
 
   return (
     <>
@@ -188,7 +178,7 @@ function Navigation() {
           zIndex: 1000,
           //padding: '12px',
           height: '48px',
-padding: '0 12px',
+          padding: '0 12px',
           background: '#1976d2',
           color: 'white',
           display: 'flex',
@@ -211,9 +201,13 @@ padding: '0 12px',
           <img
             src="/Logo.png"
             alt="Logo"
-            //style={{ height: '40px', marginRight: '16px', flexShrink: 0 }}
-            style={{ height: '32px', marginRight: '12px', flexShrink: 0 }}
-
+            onClick={() => setOpenLogo(true)}
+            style={{
+              height: '32px',
+              marginRight: '12px',
+              flexShrink: 0,
+              cursor: 'pointer'
+            }}
           />
           {navItems.map((item, index) => (
             <Box
@@ -276,6 +270,51 @@ padding: '0 12px',
           </Box>
         </Box>
       </nav>
+
+      {openLogo && (
+        <div
+          onClick={() => setOpenLogo(false)} // bấm nền → đóng
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            cursor: 'pointer'
+          }}
+        >
+          {/* Khung trắng */}
+          <div
+            style={{
+              width: 'min(260px, 55vw)',
+              height: 'min(260px, 55vw)',
+              background: 'white',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              animation: 'zoomIn 0.3s ease'
+            }}
+            onClick={() => setOpenLogo(false)}
+          >
+            <img
+              src="/Logo.png"
+              alt="Logo lớn"
+              style={{
+                maxWidth: '85%',       // ✅ logo to hơn
+                maxHeight: '85%',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Dialog khi hệ thống bị khóa */}
       <SystemLockedDialog
