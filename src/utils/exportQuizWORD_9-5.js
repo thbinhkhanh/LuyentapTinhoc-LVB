@@ -326,96 +326,25 @@ export const exportQuestionsToWord = async (
 
     // ===== TRUE FALSE =====
     else if (q.type === "truefalse") {
-      const cleanText = (str) => {
-        return str
-          .replace(/&nbsp;/gi, " ")
-          .replace(/<[^>]*>/g, "")
-          .replace(/\s+/g, " ")
-          .trim();
-      };
-
       q.options.forEach((opt, i) => {
         const label = q.correct[i] === "Đ" ? "Đ" : "S";
 
         children.push(
-          createText(`${label}. ${cleanText(stripHTML(opt))}`)
+          createText(`${label}. ${stripHTML(opt)}`)
         );
       });
     }
 
     // ===== FILL BLANK =====
     else if (q.type === "fillblank") {
-      const rawOption =
-        typeof q.option === "string"
-          ? q.option
-          : typeof q.option?.text === "string"
-          ? q.option.text
-          : "";
+      children.push(createText(stripHTML(q.option)));
 
-      // ===== normalize =====
-      let option = rawOption
-        .replace(/&nbsp;/gi, " ")
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/p>/gi, "\n")
-        .replace(/<p[^>]*>/gi, "")
-        .replace(/\r\n/g, "\n");
-
-      option = stripHTML(option)
-        .replace(/([a-zA-Z]\))\s*/g, "\n$1 ")
-        .replace(/\[\s*\.\.\.\s*\]/g, "[...]")
-        .replace(/[ \t]+/g, " ")
-        .replace(/\n{2,}/g, "\n")
-        .trim();
-
-      // ===== split dòng =====
-      const optionLines = option
-        .split("\n")
-        .map(l => l.trim())
-        .filter(Boolean);
-
-      // ===== render từng dòng riêng (GIỐNG MẪU) =====
-      optionLines.forEach(line => {
+      if (q.correct?.length) {
         children.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: line,
-                size: FONT_SIZE,
-                font: "Times New Roman",
-              }),
-            ],
-            spacing: { after: 80 },
-          })
-        );
-      });
-
-      // ===== answers =====
-      const answers =
-        Array.isArray(q.correct) && q.correct.length
-          ? q.correct
-          : Array.isArray(q.options)
-          ? q.options.map(o =>
-              typeof o === "string" ? o : o?.text || ""
-            )
-          : [];
-
-      const cleanAnswers = answers
-        .map(a => stripHTML(a))
-        .filter(Boolean);
-
-      if (cleanAnswers.length > 0) {
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Từ cần điền: ${cleanAnswers.join(" / ")}`,
-                bold: true,
-                size: FONT_SIZE,
-                font: "Times New Roman",
-              }),
-            ],
-            spacing: { after: 120 },
-          })
+          createText(
+            `Từ cần điền: ${q.correct.join(" / ")}`,
+            true
+          )
         );
       }
     }
