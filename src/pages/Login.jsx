@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
-const ACCOUNTS = ["Admin", "LVB"];
+const ACCOUNTS = ["Admin"];
 
 export default function Login() {
   const [username, setUsername] = useState(ACCOUNTS[0]);
@@ -34,7 +34,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const docRef = doc(db, "MATKHAU", username);
+      const docRef = doc(db, "MATKHAU", "Admin");
       const docSnap = await getDoc(docRef);
 
       if (!docSnap.exists()) {
@@ -48,7 +48,7 @@ export default function Login() {
 
       const storedPassword = docSnap.data().pass;
 
-      if (password === String(storedPassword)) {
+      if (username === "Admin" && password === storedPassword) {
         // ✅ Lưu trạng thái localStorage ngay
         localStorage.setItem("loggedIn", "true");
         localStorage.setItem("account", username);
