@@ -17,6 +17,8 @@ import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 
+import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
+
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 
@@ -32,6 +34,19 @@ const ChoiceOptions = ({ q, qi, update }) => {
   const fileInputRefs = useRef([]);
   const quillRefs = useRef([]);
   const [activeIndex, setActiveIndex] = useState(null);
+
+  const [openDialog, setOpenDialog] = useState(false);
+
+  const ALLOWED_TYPES = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+  ];
+
+  const showUnsupportedDialog = () => {
+    setOpenDialog(true);
+  };
 
   /* ---------- Format ---------- */
   const applyFormat = (format) => {
@@ -111,17 +126,24 @@ const ChoiceOptions = ({ q, qi, update }) => {
               <ReactQuill
                 ref={(el) => (quillRefs.current[oi] = el)}
                 theme="snow"
-                value={opt.text || ""}
+                value={opt?.text || ""}
                 modules={quillModules}
                 formats={quillFormats}
                 className="choice-option-editor"
                 onFocus={() => setActiveIndex(oi)}
                 onChange={(value) => {
-                  const newOptions = [...q.options];
+                  const current = q.options?.[oi]?.text || "";
+
+                  // 🔥 CHẶN LOOP
+                  if (value === current) return;
+
+                  const newOptions = q.options.map((o) => ({ ...o }));
+
                   newOptions[oi] = {
                     ...newOptions[oi],
                     text: value,
                   };
+
                   update(qi, { options: newOptions });
                 }}
               />
@@ -167,6 +189,13 @@ const ChoiceOptions = ({ q, qi, update }) => {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+
+                // ❌ check format
+                if (!ALLOWED_TYPES.includes(file.type)) {
+                  showUnsupportedDialog();
+                  e.target.value = "";
+                  return;
+                }
 
                 const previewUrl = URL.createObjectURL(file);
 
@@ -216,6 +245,11 @@ const ChoiceOptions = ({ q, qi, update }) => {
       >
         Thêm mục
       </Button>
+
+      <UnsupportedImageDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+      />
     </Stack>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   Box,
   Paper,
@@ -11,12 +11,15 @@ import {
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import UnsupportedImageDialog from "../../../dialog/UnsupportedImageDialog";
 
 const ImageOptions = ({ q, qi, update }) => {
+  const [openDialog, setOpenDialog] = useState(false);
   /* =========================
      UPLOAD CLOUDINARY
   ========================== */
   const uploadToCloudinary = async (file) => {
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "tracnghiem_upload");
@@ -46,6 +49,12 @@ const ImageOptions = ({ q, qi, update }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showUnsupportedDialog();
+      e.target.value = "";
+      return;
+    }
+
     const previewUrl = URL.createObjectURL(file);
 
     const newOptions = [
@@ -61,7 +70,6 @@ const ImageOptions = ({ q, qi, update }) => {
 
     update(qi, { options: newOptions });
 
-    // reset input để chọn lại được file giống nhau
     e.target.value = "";
   };
 
@@ -71,14 +79,21 @@ const ImageOptions = ({ q, qi, update }) => {
   /* =========================
    KHI CHỌN HÌNH (chỉ lưu preview + file, không upload ngay)
 ========================== */
+  const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
   const handleImageChange = (index, file) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showUnsupportedDialog();
+      return;
+    }
+
     const previewUrl = URL.createObjectURL(file);
 
     const newOptions = [...(q.options || [])];
     newOptions[index] = {
       ...(newOptions[index] || {}),
-      preview: previewUrl,   // ✅ chỉ lưu preview
-      file,                  // ✅ giữ file để sau này upload
+      preview: previewUrl,
+      file,
       text: "",
       image: "",
       formats: newOptions[index]?.formats || {},
@@ -113,6 +128,10 @@ const ImageOptions = ({ q, qi, update }) => {
       .map((c) => (c > index ? c - 1 : c));
 
     update(qi, { options: newOptions, correct: newCorrect });
+  };
+
+  const showUnsupportedDialog = () => {
+    setOpenDialog(true);
   };
 
   return (
@@ -259,6 +278,11 @@ const ImageOptions = ({ q, qi, update }) => {
             hidden
             ref={fileInputRef}
             onChange={handleAddImageFile}
+          />
+
+          <UnsupportedImageDialog
+            open={openDialog}
+            onClose={() => setOpenDialog(false)}
           />
 
       </Stack>
