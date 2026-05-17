@@ -31,7 +31,7 @@ export const migrateTRACNGHIEM = async (db) => {
       });
     }
 
-    console.log("✅ MIGRATE TRACNGHIEM5 DONE");
+    //console.log("✅ MIGRATE TRACNGHIEM5 DONE");
   } catch (err) {
     console.error("❌ MIGRATE ERROR:", err);
   }

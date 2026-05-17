@@ -26,11 +26,11 @@ export const cleanAnswersFieldInAllQuizzes = async (db) => {
           questions: cleanedQuestions,
         });
 
-        console.log(`✅ Cleaned: ${colName}/${docSnap.id}`);
+        //console.log(`✅ Cleaned: ${colName}/${docSnap.id}`);
       }
     }
 
-    console.log("🎉 DONE: Đã xoá toàn bộ answers");
+    //console.log("🎉 DONE: Đã xoá toàn bộ answers");
   } catch (err) {
     console.error("❌ Lỗi khi clean answers:", err);
   }

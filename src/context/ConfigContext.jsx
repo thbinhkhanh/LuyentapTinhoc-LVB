@@ -30,7 +30,7 @@ export const ConfigProvider = ({ children }) => {
       if (saved) {
         const parsed = JSON.parse(saved);
 
-        console.log("🔥 INIT from localStorage:", parsed);
+        //console.log("🔥 INIT from localStorage:", parsed);
 
         return { ...defaultConfig, ...parsed };
       }
@@ -74,8 +74,8 @@ export const ConfigProvider = ({ children }) => {
 
           const updated = { ...prev, ...filteredData };
 
-          console.log("🔥 FIRESTORE SYNC UPDATE:", filteredData);
-          console.log("🔥 CONFIG AFTER SYNC:", updated);
+          //console.log("🔥 FIRESTORE SYNC UPDATE:", filteredData);
+          //console.log("🔥 CONFIG AFTER SYNC:", updated);
 
           return updated;
         });
@@ -96,15 +96,15 @@ export const ConfigProvider = ({ children }) => {
       Object.entries(newValues).filter(([k]) => allowedKeys.includes(k))
     );
 
-    console.log("🔥 setConfig INPUT:", newValues);
-    console.log("🔥 setConfig FILTERED:", filtered);
+    //console.log("🔥 setConfig INPUT:", newValues);
+    //console.log("🔥 setConfig FILTERED:", filtered);
 
     const hasDiff = Object.keys(filtered).some(
       (k) => filtered[k] !== config[k]
     );
 
     if (!hasDiff) {
-      console.log("⚠️ No config change detected");
+      //console.log("⚠️ No config change detected");
       return;
     }
 
@@ -126,7 +126,7 @@ export const ConfigProvider = ({ children }) => {
         Object.entries(updated).filter(([k]) => studentKeys.includes(k))
       );
 
-      console.log("🔥 SAVE TO LOCALSTORAGE:", studentData);
+      //console.log("🔥 SAVE TO LOCALSTORAGE:", studentData);
 
       localStorage.setItem(
         "studentInfo",
@@ -162,7 +162,7 @@ export const ConfigProvider = ({ children }) => {
             { merge: true }
           );
 
-          console.log("✅ FIRESTORE UPDATED:", firestoreData);
+          //console.log("✅ FIRESTORE UPDATED:", firestoreData);
         } catch (err) {
           console.error("❌ Firestore update error:", err);
         }

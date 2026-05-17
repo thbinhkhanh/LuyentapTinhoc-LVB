@@ -169,7 +169,7 @@ export default function Lop4() {
     setHocKi(hk); // cập nhật state local
     setConfig(prev => ({ ...prev, hocKi: hk })); // cập nhật context
     localStorage.setItem('hocKi', hk); // lưu vào localStorage
-    console.log("Học kì đã chọn:", hk);
+    //console.log("Học kì đã chọn:", hk);
   };
 
   return (

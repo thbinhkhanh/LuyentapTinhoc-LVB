@@ -255,10 +255,10 @@ export default function TongHopKQ() {
         migratedAt: new Date()
       });
 
-      console.log(`✅ Migrated: ${hsData.hoVaTen}`);
+      //console.log(`✅ Migrated: ${hsData.hoVaTen}`);
     }
 
-    console.log("🎉 Hoàn tất migrate dữ liệu cũ → BAITHI/Bài_9");
+    //console.log("🎉 Hoàn tất migrate dữ liệu cũ → BAITHI/Bài_9");
   };
 
 
@@ -305,14 +305,14 @@ export default function TongHopKQ() {
             )
           );
 
-          console.log(
+          //console.log(
             `🗑️ Đã xóa ${baiDoc.id} của ${hsDoc.data().hoVaTen}`
           );
         }
       }
     }
 
-    console.log("✅ Hoàn tất xóa tất cả BAITHI ≠ Bài_9");
+    //console.log("✅ Hoàn tất xóa tất cả BAITHI ≠ Bài_9");
   };
 
   useEffect(() => {

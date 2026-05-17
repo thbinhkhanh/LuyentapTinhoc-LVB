@@ -132,13 +132,13 @@ useEffect(() => {
     };
 
     // 🔥 LOG để kiểm tra trước khi lưu context
-    console.log("🔥 INFO LOGIN:", newUserInfo);
+    //console.log("🔥 INFO LOGIN:", newUserInfo);
 
     // ✅ Lưu vào Context (KHÔNG cần localStorage nữa nếu bạn muốn sạch)
     await setConfig(newUserInfo, false);
 
     // 🔥 LOG SAU KHI SET
-    console.log("✅ CONTEXT UPDATED (expected):", newUserInfo);
+    //console.log("✅ CONTEXT UPDATED (expected):", newUserInfo);
 
     // điều hướng
     if (location.state?.target) {
@@ -146,7 +146,7 @@ useEffect(() => {
         state: { fromInfo: true },
       });
     } else {
-      console.log("🚀 NAVIGATE /trac-nghiem?lop =", lop);
+      //console.log("🚀 NAVIGATE /trac-nghiem?lop =", lop);
 
       navigate(`/trac-nghiem?lop=${lop}`, {
         state: { fromInfo: true },
