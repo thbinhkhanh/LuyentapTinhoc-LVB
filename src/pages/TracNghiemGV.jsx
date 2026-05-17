@@ -1144,7 +1144,50 @@ const handleReloadExam = async () => {
                           size="small"
                           edge="end"
                           onClick={() => {
-                            // gán callback reset dữ liệu
+                            // 🔥 kiểm tra có dữ liệu hay chưa
+                            const hasLessonName = lessonInput.trim() !== "";
+
+                            const hasQuestionData = questions.some((q) => {
+                              return (
+                                q.question?.trim() ||
+                                q.title?.trim() ||
+                                q.questionImage ||
+                                q.options?.some((opt) => {
+                                  if (typeof opt === "string") {
+                                    return opt.trim();
+                                  }
+
+                                  return (
+                                    opt?.text?.trim() ||
+                                    opt?.image
+                                  );
+                                }) ||
+                                q.answers?.length > 0 ||
+                                q.pairs?.length > 0
+                              );
+                            });
+
+                            const hasData = hasLessonName || hasQuestionData;
+
+                            // ===== KHÔNG CÓ DỮ LIỆU → THOÁT LUÔN =====
+                            if (!hasData) {
+                              setIsAddingLesson(false);
+                              localStorage.removeItem("isAddingLesson");
+
+                              setLessonInput("");
+
+                              if (prevLesson) {
+                                setLesson(prevLesson);
+                                setQuestions(prevQuestions);
+                              } else {
+                                setLesson("");
+                                setQuestions([createEmptyQuestion()]);
+                              }
+
+                              return;
+                            }
+
+                            // ===== CÓ DỮ LIỆU → MỞ DIALOG =====
                             setOnConfirmExit(() => () => {
                               setIsAddingLesson(false);
                               localStorage.removeItem("isAddingLesson");
@@ -1159,10 +1202,9 @@ const handleReloadExam = async () => {
                                 setQuestions([createEmptyQuestion()]);
                               }
 
-                              setOpenExitDialog(false); // đóng dialog
+                              setOpenExitDialog(false);
                             });
 
-                            // mở dialog cảnh báo
                             setOpenExitDialog(true);
                           }}
                         >
