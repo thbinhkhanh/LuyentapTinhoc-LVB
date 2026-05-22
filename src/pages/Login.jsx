@@ -19,10 +19,13 @@ import { useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
-const ACCOUNTS = ["Admin", "LVB"];
+const ACCOUNTS = [
+  { value: "LVB", label: "Lâm Văn Bền" },
+  { value: "Admin", label: "Admin" },
+];
 
 export default function Login() {
-  const [username, setUsername] = useState(ACCOUNTS[0]);
+  const [username, setUsername] = useState(ACCOUNTS[0].value);
   const [password, setPassword] = useState("");
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -97,11 +100,11 @@ export default function Login() {
     sx={{
       minHeight: "100vh",
       background: "#f1f5f9",
-      py: 3,
+      py: 10,
       px: 2,
       display: "flex",
       justifyContent: "center",
-      alignItems: "center",
+      alignItems: "flex-start",
       fontFamily:
         '"Roboto","Inter","Arial",sans-serif',
     }}
@@ -244,39 +247,16 @@ export default function Login() {
               <Select
                 value={username}
                 label="Tài khoản"
-                onChange={(e) =>
-                  setUsername(
-                    e.target.value
-                  )
-                }
-                sx={{
-                  bgcolor: "#fff",
-                  borderRadius: "5px",
-
-                  "& .MuiOutlinedInput-notchedOutline":
-                    {
-                      borderColor:
-                        "#dbe2ea",
-                    },
-
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline":
-                    {
-                      borderColor:
-                        "#1976d2",
-                      borderWidth: 2,
-                    },
-                }}
+                onChange={(e) => setUsername(e.target.value)}
               >
-                {ACCOUNTS.map(
-                  (acc) => (
-                    <MenuItem
-                      key={acc}
-                      value={acc}
-                    >
-                      {acc}
-                    </MenuItem>
-                  )
-                )}
+                {ACCOUNTS.map((acc) => (
+                  <MenuItem
+                    key={acc.value}
+                    value={acc.value}
+                  >
+                    {acc.label}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
 
