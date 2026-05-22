@@ -273,16 +273,31 @@ export default function BackupPage({ open, onClose }) {
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="xs"
-      fullWidth
+      maxWidth={false}
       PaperProps={{
         sx: {
+          width: "100%",
+          maxWidth: 450,
           borderRadius: "14px",
           overflow: "hidden",
           background: "#f8fafc",
           border: "1px solid #e2e8f0",
           boxShadow:
             "0 10px 35px rgba(0,0,0,0.12)",
+          m: 0,
+        },
+      }}
+      sx={{
+        "& .MuiDialog-container": {
+          justifyContent: "center",
+          alignItems: "flex-start",
+          pt: 10, // giống py:10 của mẫu
+          px: 2,  // giống px:2 của mẫu
+        },
+
+        "& .MuiBackdrop-root": {
+          background: "rgba(15,23,42,0.45)",
+          backdropFilter: "blur(2px)",
         },
       }}
     >
@@ -309,16 +324,6 @@ export default function BackupPage({ open, onClose }) {
             >
               Sao lưu dữ liệu
             </Typography>
-
-            {/*<Typography
-              sx={{
-                fontSize: 13,
-                opacity: 0.9,
-                mt: 0.3,
-              }}
-            >
-              Xuất dữ liệu hệ thống ra file JSON
-            </Typography>*/}
           </Box>
 
           <IconButton

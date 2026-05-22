@@ -309,21 +309,44 @@ export default function RestorePage({ open, onClose }) {
   return (
   <>
     <Dialog
-          open={open}
-          onClose={onClose}
-          maxWidth="xs"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: "14px",
-              overflow: "hidden",
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              boxShadow:
-                "0 10px 35px rgba(0,0,0,0.12)",
-            },
-          }}
-        >
+      open={open}
+      onClose={onClose}
+      maxWidth={false}
+      fullWidth
+      PaperProps={{
+        sx: {
+          width: "100%",
+          maxWidth: "450px",
+
+          borderRadius: "14px",
+          overflow: "hidden",
+
+          background: "#f8fafc",
+          border: "1px solid #e2e8f0",
+
+          boxShadow:
+            "0 10px 35px rgba(0,0,0,0.12)",
+
+          m: 0,
+        },
+      }}
+      sx={{
+        "& .MuiDialog-container": {
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "flex-start",
+
+          pt: "80px",
+          px: "16px",
+        },
+
+        "& .MuiBackdrop-root": {
+          background:
+            "rgba(15,23,42,0.45)",
+          backdropFilter: "blur(2px)",
+        },
+      }}
+    >
       {/* ===== HEADER ===== */}
       <Box
         sx={{
@@ -347,16 +370,6 @@ export default function RestorePage({ open, onClose }) {
             >
               Phục hồi dữ liệu
             </Typography>
-
-            {/*<Typography
-              sx={{
-                fontSize: 13,
-                opacity: 0.9,
-                mt: 0.3,
-              }}
-            >
-              Khôi phục dữ liệu từ file JSON
-            </Typography>*/}
           </Box>
 
           <IconButton
