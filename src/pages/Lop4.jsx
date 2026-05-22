@@ -153,11 +153,29 @@ export default function Lop4() {
 
   // ===== LỌC THEO HỌC KÌ =====
   const [namHoc, setNamHoc] = useState("");
-  const lessonsByHocKi = lessons.filter(lesson =>
-    namHoc === "2025-2026"
-      ? (hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9)
-      : (hocKi === 1 ? lesson.stt <= 11 : lesson.stt > 11)
-  );
+  
+  const lessonsByHocKi = lessons.filter((lesson) => {
+    // Nếu có stt thì dùng stt
+    if (lesson.stt) {
+      return namHoc === "2025-2026"
+        ? (hocKi === 1 ? lesson.stt <= 9 : lesson.stt > 9)
+        : (hocKi === 1 ? lesson.stt <= 11 : lesson.stt > 11);
+    }
+
+    // Nếu không có stt => kiểm tra "Tuần xx"
+    const match = lesson.title.match(/Tuần\s+(\d+)/i);
+
+    if (match) {
+      const week = parseInt(match[1]);
+
+      return hocKi === 1
+        ? week <= 18
+        : week > 18;
+    }
+
+    // Các bài không có stt + không có tuần
+    return true;
+  });
 
   // ===== CLICK CARD =====
   const handleSelect = (title) => {
